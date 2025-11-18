@@ -110,9 +110,6 @@ Auto-Intelligent/
 ├── LICENSE
 └── requirements.txt
 
-yaml
-코드 복사
-
 ---
 
 ## ▶️ How to Run
