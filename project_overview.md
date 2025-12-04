@@ -45,7 +45,12 @@ project-root/
 │ ├── feature_engineering.py
 │ ├── hpo.py
 │ ├── explain.py
-│ └── (additional modules added by Codex)
+│ ├── eda.py
+│ ├── ingestion.py
+│ ├── io_utils.py
+│ ├── model_search.py
+│ ├── preprocessing.py
+│ └── visualization.py
 │
 ├── pages/
 │ ├── 01_upload.py
