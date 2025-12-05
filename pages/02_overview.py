@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split, GroupShuffleSplit
 
 st.set_page_config(layout="wide")
 st.title("2 - Overview (데이터 개요)")
+st.info("이 단계에서 타깃을 확정하고 분할·컬럼 역할을 지정합니다. 추천값을 우선 사용한 뒤, 필요한 경우에만 수정하세요.")
 
 # 세션 기본 키
 for key in [
@@ -51,18 +52,26 @@ def _suggest_split_strategy(df: pd.DataFrame, target_col: str, problem_type: str
     # datetime 컬럼 확인
     dt_cols = [c for c in df.columns if pd.api.types.is_datetime64_any_dtype(df[c])]
     suggestion["datetime_cols"] = dt_cols
-    # 그룹 후보: 전체 행 대비 2~50% 사이 고유값을 가지는 컬럼
+    # 그룹 후보: 카테고리형/저카디널리티만 고려 (연속형 숫자는 제외)
     group_candidates = []
     for c in df.columns:
         if c == target_col:
             continue
         try:
             nunique = int(df[c].nunique(dropna=True))
+            ratio = nunique / max(1, len(df))
         except Exception:
             continue
-        ratio = nunique / max(1, len(df))
-        if 2 <= nunique <= max(2, int(len(df) * 0.5)) and 0.02 <= ratio <= 0.5:
-            group_candidates.append(c)
+        # datetime은 위에서 처리
+        if pd.api.types.is_numeric_dtype(df[c]):
+            # 숫자형은 저카디널리티(반복되는 ID 계열)만 그룹 후보로 허용
+            max_num_unique = min(50, int(len(df) * 0.1))  # 데이터 10% 이하, 최대 50
+            if 2 <= nunique <= max(2, max_num_unique) and ratio <= 0.1:
+                group_candidates.append(c)
+        else:
+            # 범주/문자형: 너무 많은 유니크는 제외
+            if 2 <= nunique <= max(2, int(len(df) * 0.5)) and ratio <= 0.5:
+                group_candidates.append(c)
     suggestion["group_candidates"] = group_candidates
 
     # 문제 유형 판단
@@ -166,6 +175,7 @@ with col_left:
         st.success(f"타깃 컬럼: `{st.session_state['target_col']}`")
 
     st.markdown("### 데이터 분할 설정")
+    st.caption("Tip: 시계열이면 time, 그룹 데이터면 group을, 분류 불균형이면 stratified를 우선 고려하세요. 그렇지 않으면 random으로도 충분합니다.")
     with st.expander("train/test 분할 생성·재생성", expanded=False):
         split_meta_default = {"test_size": 0.2, "random_state": 42, "stratify": False}
         split_meta_saved = st.session_state.get("split_meta") or split_meta_default
@@ -198,11 +208,10 @@ with col_left:
             )
         with col_s3:
             can_stratify = bool(st.session_state.get("target_col"))
-            stratify_flag = st.checkbox(
-                "stratify target (classification)",
-                value=bool(split_meta_saved.get("stratify", False) and can_stratify),
-                disabled=not can_stratify,
-            )
+            stratify_flag = strategy_choice == "stratified" and can_stratify
+            if not can_stratify and strategy_choice == "stratified":
+                st.warning("타깃을 선택해야 stratified 분할을 사용할 수 있습니다.")
+            st.caption("stratified는 분류 타깃이 있을 때만 자동 적용됩니다.")
 
         time_col = None
         group_col = None
@@ -245,7 +254,7 @@ with col_left:
                     train_idx = [idx[i] for i in split[0]]
                     test_idx = [idx[i] for i in split[1]]
                 else:
-                    stratify_vals = df[st.session_state["target_col"]] if (stratify_flag and st.session_state.get("target_col")) else None
+                    stratify_vals = df[st.session_state["target_col"]] if stratify_flag else None
                     train_idx, test_idx = train_test_split(
                         idx,
                         test_size=float(test_size),
@@ -315,6 +324,7 @@ with col_left:
         st.info("타깃 컬럼을 먼저 선택하면 문제 유형을 자동 추천합니다.")
 
     st.markdown("### 컬럼 타입/드랍 수동 조정")
+    st.caption("ID·상수·무의미한 열은 drop으로 제거하고, 숫자/범주/날짜 타입을 올바르게 지정하세요. 잘 모르겠다면 기본 감지값을 유지해도 됩니다.")
     role_options = ["numeric", "categorical", "datetime", "drop"]
     with st.form("col_override_form"):
         overrides: Dict[str, str] = {}

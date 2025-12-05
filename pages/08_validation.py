@@ -52,6 +52,7 @@ except Exception:
 
 st.set_page_config(layout="wide")
 st.title("8 - Model Validation")
+st.info("이전 단계에서 준비한 모델/데이터로 검증을 수행합니다. 기본 설정으로 바로 실행되며, 결과 표·그래프는 필요할 때만 펼쳐 볼 수 있도록 구성했습니다.")
 
 
 # ------------ helpers ------------
@@ -330,12 +331,17 @@ if not (isinstance(train_idx_saved, list) and isinstance(test_idx_saved, list) a
     st.session_state["test_idx"] = test_idx_saved
 
 split_indices = (train_idx_saved, test_idx_saved)
+col_meta1, col_meta2, col_meta3 = st.columns(3)
+with col_meta1:
+    st.metric("전체 행 수", df_eval.shape[0])
+    st.caption("타깃 결측은 자동 제거 후 사용합니다.")
+with col_meta2:
+    st.metric("특징 수", df_eval.shape[1])
+with col_meta3:
+    st.metric("Train/Test", f"{len(split_indices[0])}/{len(split_indices[1])}")
 st.caption(
-    f"분할 정보 (변경은 Upload/초기 설정에서 수행): "
-    f"Train {len(split_indices[0])} | Test {len(split_indices[1])} | "
-    f"비율≈ {split_meta_saved.get('test_size', 0.2):.2f} | "
-    f"stratify: {bool(split_meta_saved.get('stratify', False))} | "
-    f"random_state: {split_meta_saved.get('random_state', 42)}"
+    f"분할 정보(Upload/Overview에서 설정): test 비율 {split_meta_saved.get('test_size', 0.2):.2f}, "
+    f"stratify: {bool(split_meta_saved.get('stratify', False))}, random_state: {split_meta_saved.get('random_state', 42)}"
 )
 
 # model sources
@@ -365,6 +371,8 @@ if not options:
     st.error("평가할 모델이 없습니다. Model Selection/HPO 단계 수행 후 다시 시도하세요.")
     st.stop()
 
+st.subheader("검증용 모델 선택")
+st.caption("세션에 저장된 모델 우선 → 베이스라인 → HPO 파라미터 재학습 순으로 선택할 수 있습니다.")
 model_choice = st.selectbox("평가할 모델 선택", options=options, index=0)
 
 # ------------ prepare model and data ------------
@@ -443,6 +451,12 @@ except Exception as e:
 if task is None:
     task = ms.detect_task_type(pd.DataFrame({target_col: y_test}), target_col=target_col)
 
+val_result: Dict[str, Any] = {
+    "task": task,
+    "n_test": int(len(y_test)),
+    "n_features": int(X_test.shape[1]) if hasattr(X_test, "shape") else None,
+}
+
 if task == "classification":
     st.header("Classification metrics")
     try:
@@ -450,13 +464,23 @@ if task == "classification":
         f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
         prec = precision_score(y_test, y_pred, average="weighted", zero_division=0)
         rec = recall_score(y_test, y_pred, average="weighted", zero_division=0)
-        st.metric("Accuracy", f"{acc:.4f}")
-        st.metric("F1 (weighted)", f"{f1:.4f}")
-        st.metric("Precision (weighted)", f"{prec:.4f}")
-        st.metric("Recall (weighted)", f"{rec:.4f}")
+        mcol1, mcol2, mcol3, mcol4 = st.columns(4)
+        mcol1.metric("Accuracy", f"{acc:.4f}")
+        mcol2.metric("F1 (weighted)", f"{f1:.4f}")
+        mcol3.metric("Precision", f"{prec:.4f}")
+        mcol4.metric("Recall", f"{rec:.4f}")
         cm = confusion_matrix(y_test, y_pred)
-        st.subheader("Confusion Matrix")
-        st.pyplot(plot_confusion_matrix(cm, [str(c) for c in np.unique(y_test)]))
+        with st.expander("Confusion Matrix 보기", expanded=True):
+            st.pyplot(plot_confusion_matrix(cm, [str(c) for c in np.unique(y_test)]))
+        val_result.update(
+            {
+                "accuracy": float(acc),
+                "f1_weighted": float(f1),
+                "precision_weighted": float(prec),
+                "recall_weighted": float(rec),
+                "classes": [str(c) for c in np.unique(y_test)],
+            }
+        )
 
         y_proba = None
         if hasattr(model, "predict_proba"):
@@ -465,24 +489,24 @@ if task == "classification":
             except Exception:
                 y_proba = None
         if y_proba is not None and y_proba.ndim == 2 and y_proba.shape[1] == 2:
-            st.subheader("ROC Curve (binary)")
-            fpr, tpr, _ = roc_curve(y_test, y_proba[:, 1])
-            roc_auc = auc(fpr, tpr)
-            fig_roc, axr = plt.subplots(figsize=(6, 5))
-            axr.plot(fpr, tpr, label=f"AUC = {roc_auc:.4f}")
-            axr.plot([0, 1], [0, 1], linestyle="--", color="gray")
-            axr.set_xlabel("FPR")
-            axr.set_ylabel("TPR")
-            axr.legend()
-            st.pyplot(fig_roc)
+            with st.expander("ROC / PR Curve (이진)", expanded=False):
+                fpr, tpr, _ = roc_curve(y_test, y_proba[:, 1])
+                roc_auc = auc(fpr, tpr)
+                fig_roc, axr = plt.subplots(figsize=(6, 5))
+                axr.plot(fpr, tpr, label=f"AUC = {roc_auc:.4f}")
+                axr.plot([0, 1], [0, 1], linestyle="--", color="gray")
+                axr.set_xlabel("FPR")
+                axr.set_ylabel("TPR")
+                axr.legend()
+                st.pyplot(fig_roc)
 
-            st.subheader("Precision-Recall Curve")
-            precision_vals, recall_vals, _ = precision_recall_curve(y_test, y_proba[:, 1])
-            fig_pr, axpr = plt.subplots(figsize=(6, 5))
-            axpr.plot(recall_vals, precision_vals)
-            axpr.set_xlabel("Recall")
-            axpr.set_ylabel("Precision")
-            st.pyplot(fig_pr)
+                precision_vals, recall_vals, _ = precision_recall_curve(y_test, y_proba[:, 1])
+                fig_pr, axpr = plt.subplots(figsize=(6, 5))
+                axpr.plot(recall_vals, precision_vals)
+                axpr.set_xlabel("Recall")
+                axpr.set_ylabel("Precision")
+                st.pyplot(fig_pr)
+                val_result.update({"auc": float(roc_auc)})
     except Exception as e:
         st.error(f"분류 지표 계산 실패: {e}")
 
@@ -494,13 +518,18 @@ else:
         mae = mean_absolute_error(y_true, y_pred_f)
         rmse = np.sqrt(mean_squared_error(y_true, y_pred_f))
         r2 = r2_score(y_true, y_pred_f)
-        st.metric("MAE", f"{mae:.4f}")
-        st.metric("RMSE", f"{rmse:.4f}")
-        st.metric("R²", f"{r2:.4f}")
-        st.subheader("Residual plot")
-        st.pyplot(plot_regression_residuals(y_true, y_pred_f))
+        mcol1, mcol2, mcol3 = st.columns(3)
+        mcol1.metric("MAE", f"{mae:.4f}")
+        mcol2.metric("RMSE", f"{rmse:.4f}")
+        mcol3.metric("R²", f"{r2:.4f}")
+        with st.expander("Residual plot", expanded=True):
+            st.pyplot(plot_regression_residuals(y_true, y_pred_f))
+        val_result.update({"mae": float(mae), "rmse": float(rmse), "r2": float(r2)})
     except Exception as e:
         st.error(f"회귀 지표 계산 실패: {e}")
+
+# Save concise validation summary for report page
+st.session_state["validation_result"] = val_result
 
 # ------------ importance ------------
 st.header("Feature importance")
@@ -515,8 +544,8 @@ try:
     if hasattr(model, "feature_importances_"):
         importances = model.feature_importances_
         imp_df = pd.DataFrame({"feature": feature_names, "importance": importances}).sort_values("importance", ascending=False).reset_index(drop=True)
-        st.subheader("Built-in feature_importances_")
-        st.dataframe(imp_df.head(50))
+        with st.expander("내장 feature_importances_ 확인", expanded=False):
+            st.dataframe(imp_df.head(30))
     else:
         st.caption("내장 feature_importances_가 없어 permutation importance로 계산합니다.")
         with st.spinner("Permutation importance 계산 중..."):
@@ -524,13 +553,15 @@ try:
             imp_df = pd.DataFrame(
                 {"feature": feature_names, "importance_mean": r.importances_mean, "importance_std": r.importances_std}
             ).sort_values("importance_mean", ascending=False).reset_index(drop=True)
-            st.dataframe(imp_df.head(50))
+        with st.expander("Permutation importance 결과 보기", expanded=False):
+            st.dataframe(imp_df.head(30))
 except Exception as e:
     st.error(f"특징 중요도 계산 실패: {e}")
 
 # ------------ SHAP ------------
 if _HAS_EXPLAIN and explain_mod is not None:
     st.header("SHAP 설명 (옵션)")
+    st.caption("무겁게 동작할 수 있으니 필요할 때만 실행하세요.")
     if st.button("SHAP 요약/워터폴 생성"):
         try:
             X_for_shap = X_test if isinstance(X_test, (pd.DataFrame, np.ndarray)) else np.asarray(X_test)

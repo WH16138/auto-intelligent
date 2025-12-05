@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split
 
 st.set_page_config(layout="wide")
 st.title("4 - 전처리")
+st.info("기본값으로 바로 실행 가능합니다. 숫자/범주 처리만 확인하고 필요할 때만 바꾸세요.")
 
 # Session defaults
 for key in [
@@ -48,6 +49,7 @@ df: Optional[pd.DataFrame] = df_dropped
 target_col = st.session_state.get("target_col")
 train_idx = st.session_state.get("train_idx")
 test_idx = st.session_state.get("test_idx")
+df_view = df.iloc[train_idx].copy() if isinstance(train_idx, list) and len(train_idx) > 0 else df
 
 if df is None:
     st.warning("Upload 페이지에서 데이터를 불러온 후 다시 시도하세요.")
@@ -55,6 +57,7 @@ if df is None:
 
 # Config in main body
 st.markdown("### 전처리 설정")
+st.caption("기본값: 수치 median+스케일링, 범주 최빈값+One-Hot. 범주 수가 많으면 Ordinal로 자동 전환.")
 col_a, col_b, col_c = st.columns(3)
 with col_a:
     numeric_imputer = st.selectbox("수치 결측 대치", options=["median", "mean", "constant"], index=0)
@@ -64,8 +67,7 @@ with col_b:
     use_onehot = st.checkbox("범주형 One-Hot 인코딩", value=True)
 with col_c:
     onehot_threshold = st.number_input("One-Hot 최대 범주 수(초과 시 Ordinal)", min_value=2, max_value=1000, value=20, step=1)
-    preview_n = st.number_input("미리보기 행수", min_value=5, max_value=1000, value=50, step=5)
-save_default_pipeline_name = st.text_input("파이프라인 저장 경로", value="artifacts/preprocessor.joblib")
+    preview_n = st.number_input("미리보기 행수", min_value=5, max_value=500, value=50, step=5)
 
 st.info("타깃 컬럼은 전처리 입력에서 제외하고, 변환 후 다시 붙입니다.")
 
@@ -73,11 +75,11 @@ st.markdown("---")
 st.subheader("데이터 개요")
 col1, col2, col3 = st.columns([1, 1, 1])
 with col1:
-    st.metric("행 수", df.shape[0])
+    st.metric("행 수 (train 기준)", df_view.shape[0])
 with col2:
-    st.metric("열 수", df.shape[1])
+    st.metric("열 수", df_view.shape[1])
 with col3:
-    n_missing = int(df.isnull().sum().sum())
+    n_missing = int(df_view.isnull().sum().sum())
     st.metric("결측 총합", n_missing)
 
 def _apply_pipeline(df_input: pd.DataFrame):
@@ -130,8 +132,8 @@ if st.button("미리보기 생성"):
 
 col_orig, col_new = st.columns(2)
 with col_orig:
-    st.caption("원본 데이터 (상위)")
-    st.dataframe(df.head(preview_n))
+    st.caption("원본 데이터 (train 기준 상위)")
+    st.dataframe(df_view.head(preview_n))
 with col_new:
     st.caption("전처리 미리보기 (상위)")
     if st.session_state.get("df_preprocessed_preview") is not None:
@@ -161,7 +163,7 @@ with col_apply:
                 st.session_state["df_features_train"] = df_trans.iloc[train_idx].copy()
             if isinstance(test_idx, list) and len(test_idx) > 0:
                 st.session_state["df_features_test"] = df_trans.iloc[test_idx].copy()
-            st.success("전처리 완료: st.session_state['df_preprocessed'] 에 저장되었습니다.")
+            st.success("전처리 완료! 이후 단계에서 바로 활용할 수 있습니다.")
             st.dataframe(df_trans.head(preview_n))
         except Exception as e:
             st.error(f"전처리 적용 실패: {e}")
@@ -173,23 +175,6 @@ with col_apply:
         st.success("원본 데이터를 그대로 다음 단계에 사용합니다.")
 
 with col_actions:
-    st.markdown("파이프라인 저장")
-    if st.button("파이프라인 저장 (artifacts)"):
-        pre = st.session_state.get("preprocessing_pipeline")
-        if pre is None:
-            st.warning("먼저 '전처리 적용'을 수행하세요.")
-        else:
-            try:
-                path = save_default_pipeline_name or "artifacts/preprocessor.joblib"
-                if hasattr(prep, "save_pipeline"):
-                    prep.save_pipeline(pre, path)
-                else:
-                    io_utils.save_model(pre, path)
-                st.success(f"파이프라인을 저장했습니다: {path}")
-            except Exception as e:
-                st.error(f"파이프라인 저장 실패: {e}")
-
-    st.markdown("---")
     st.markdown("전처리 결과 다운로드")
     if st.session_state.get("df_preprocessed") is not None:
         csv_bytes = st.session_state["df_preprocessed"].to_csv(index=False).encode("utf-8")

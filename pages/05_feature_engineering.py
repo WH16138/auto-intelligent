@@ -14,6 +14,7 @@ import pandas as pd
 
 st.set_page_config(layout="wide")
 st.title("5 - 특징 공학")
+st.info("기본값으로 빠르게 실행해보고, 필요한 경우에만 생성 규칙/적용 범위를 조정하세요. 타깃은 자동으로 생성 대상에서 제외됩니다.")
 
 # Session defaults
 for key in [
@@ -101,10 +102,12 @@ if target_col and target_col in source_df.columns:
 
 # 주요 설정 (본문)
 st.markdown("### 자동 생성 설정")
+st.caption("기본 규칙(비율/차이/로그/날짜 추출)으로 최대 10개를 생성합니다. 먼저 실행해보고 결과를 골라서 적용하세요.")
 col_cfg1, col_cfg2, col_cfg3 = st.columns(3)
 with col_cfg1:
-    max_new = st.number_input("최대 생성 개수", min_value=1, max_value=200, value=10, step=1)
-    preview_rows = st.number_input("미리보기 행수", min_value=5, max_value=500, value=50, step=5)
+    max_new = st.number_input("최대 생성 개수", min_value=1, max_value=500, value=10, step=1)
+    preview_rows = st.number_input("미리보기 행수", min_value=5, max_value=200, value=50, step=5)
+    st.caption("과도한 생성은 과적합·지연을 유발할 수 있어 500까지 제한합니다.")
 with col_cfg2:
     methods: List[str] = st.multiselect(
         "사용할 변환",
@@ -113,10 +116,8 @@ with col_cfg2:
     )
     datetime_extract = st.checkbox("datetime에서 연/월/일/시간 추출", value=True)
 with col_cfg3:
-    save_meta_name = st.text_input("메타 저장 경로", value="artifacts/fe_meta.json")
-    st.markdown("옵션: 중요도 기반 선택")
-    use_importance = st.checkbox("중요도 기반 선택 실행", value=False)
-    top_k = st.number_input("상위 k개", min_value=1, max_value=500, value=20, step=1)
+    st.markdown("생성·추천 안내")
+    st.caption("- 생성 규칙은 train 기준으로 학습 후 전체에 반영됩니다.\n- 중요도 추천은 아래 섹션에서 바로 실행할 수 있습니다.")
 
 st.info("타깃 컬럼은 자동 생성 입력에서 제외됩니다. 필요 시 상단에서 타깃을 먼저 지정하세요.")
 
@@ -152,7 +153,8 @@ with col_gen_a:
 with col_gen_b:
     if st.session_state.get("feature_engineering_meta"):
         st.markdown("**최근 생성 메타**")
-        st.json(st.session_state["feature_engineering_meta"])
+        with st.expander("메타 보기 (길면 접어서 확인)", expanded=False):
+            st.json(st.session_state["feature_engineering_meta"])
     else:
         st.info("아직 생성된 특징이 없습니다. '자동 생성 실행'을 눌러주세요.")
 
@@ -175,7 +177,7 @@ else:
     st.caption("미리보기 (입력 + 생성 특징)")
     st.dataframe(preview_df.head(int(preview_rows)))
 
-    keep = st.multiselect("적용할 생성 특징 선택", options=new_feats, default=new_feats)
+    keep = st.multiselect("적용할 생성 특징 선택", options=new_feats, default=new_feats, help="과하게 생성된 특징을 줄일 때 선택하세요.")
     if st.button("선택 특징만 반영"):
         try:
             df_base_copy = source_df.copy()
@@ -206,17 +208,9 @@ else:
         except Exception as e:
             st.error(f"교체 실패: {e}")
 
-    if st.button("생성 메타 저장 (artifacts)"):
-        try:
-            meta = st.session_state.get("feature_engineering_meta") or {}
-            io_utils.save_json(meta, save_meta_name)
-            st.success(f"메타 저장 완료: {save_meta_name}")
-        except Exception as e:
-            st.error(f"저장 실패: {e}")
-
-    csv_bytes = preview_df.head(1000).to_csv(index=False).encode("utf-8")
+    csv_bytes = preview_df.head(200).to_csv(index=False).encode("utf-8")
     st.download_button(
-        "미리보기 CSV 다운로드 (상위 1000행)",
+        "미리보기 CSV 다운로드 (상위 200행)",
         data=csv_bytes,
         file_name="generated_features_preview.csv",
         mime="text/csv",
@@ -224,10 +218,13 @@ else:
 
 st.markdown("---")
 
-# 3) 중요도 기반 선택 (옵션)
-st.subheader("중요도 기반 선택 (옵션)")
-if use_importance:
-    if st.button("중요도 기준 상위 k개 추천"):
+# 3) 중요도 기반 선택
+st.subheader("중요도 기반 선택")
+st.caption("타깃이 있을 때 RandomForest 기반 상위 k개를 추천합니다. 실행과 적용 버튼을 한곳에 모았습니다.")
+col_imp_main, col_imp_side = st.columns([2, 1])
+with col_imp_main:
+    top_k = st.number_input("상위 k개 추천", min_value=1, max_value=500, value=20, step=1)
+    if st.button("중요도 기준 추천 실행"):
         try:
             target_col = st.session_state.get("target_col")
             if target_col is None:
@@ -264,10 +261,11 @@ if use_importance:
                     st.write(top_feats)
         except Exception as e:
             st.error(f"중요도 계산 실패: {e}")
-    # If 추천 결과가 세션에 남아있다면 적용 버튼 노출
+
+with col_imp_side:
     top_feats_saved: list = st.session_state.get("fe_top_features") or []
     if top_feats_saved:
-        st.caption(f"최근 추천 특징 {len(top_feats_saved)}개를 적용할 수 있습니다.")
+        st.caption(f"최근 추천 {len(top_feats_saved)}개 적용")
         if st.button("추천 특징만 남기기 (타깃 포함)"):
             try:
                 target_col = st.session_state.get("target_col")
@@ -304,8 +302,8 @@ if use_importance:
                         st.success(f"추천 특징 {len(available)}개만 유지했습니다.")
             except Exception as e:
                 st.error(f"추천 적용 실패: {e}")
-else:
-    st.info("위 설정에서 '중요도 기반 선택 실행'을 켜면 동작합니다.")
+    else:
+        st.info("추천을 실행하면 여기에서 바로 적용할 수 있습니다.")
 
 st.markdown("---")
 if st.button("특징공학 생략/현재 데이터로 확정"):

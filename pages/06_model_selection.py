@@ -16,6 +16,7 @@ import streamlit as st
 
 st.set_page_config(layout="wide")
 st.title("6 - Model Selection")
+st.info("train 기준 데이터를 사용해 빠르게 베이스라인을 비교합니다. 기본값 그대로 실행해도 되며, 결과 표와 그래프를 확인한 뒤 최적 모델을 저장하세요.")
 
 # Session defaults
 for key, default in [
@@ -86,9 +87,13 @@ else:
     active_df_train = active_df
 problem_type_override = st.session_state.get("problem_type")
 
-st.write(
-    f"사용 데이터: {active_df_train.shape[0]} 행 × {active_df_train.shape[1]} 열 (train subset)"
-)
+col_meta1, col_meta2, col_meta3 = st.columns(3)
+with col_meta1:
+    st.metric("train 행 수", active_df_train.shape[0])
+with col_meta2:
+    st.metric("전체 열 수", active_df_train.shape[1])
+with col_meta3:
+    st.caption("tip: 전처리/특징공학 단계에서 만든 컬럼을 그대로 사용합니다.")
 
 # Target selection
 action_target = st.session_state.get("target_col")
@@ -125,11 +130,12 @@ if problem_type_override:
 
 # CV/random_state
 st.subheader("베이스라인 실행 설정")
+st.caption("기본값을 권장합니다. CV는 클래스 최소 빈도에 맞춰 자동 조정됩니다.")
 col_a, col_b = st.columns(2)
 with col_a:
-    cv = st.number_input("CV 분할 수", min_value=2, max_value=10, value=3, step=1)
+    cv = st.number_input("CV 분할 수", min_value=2, max_value=10, value=3, step=1, help="교차검증 폴드 수")
 with col_b:
-    random_state = st.number_input("random_state", min_value=0, value=0, step=1)
+    random_state = st.number_input("random_state", min_value=0, value=0, step=1, help="재현성을 위한 시드")
 
 # Run baselines
 if st.button("빠른 베이스라인 실행 (Quick Baselines)"):
@@ -181,7 +187,8 @@ baseline_models = st.session_state.get("baseline_models") or {}
 if baselines_df is None:
     st.info("아직 베이스라인을 실행하지 않았습니다.")
 else:
-    st.dataframe(baselines_df.fillna("N/A").round(4), use_container_width=True)
+    with st.expander("결과 표 보기", expanded=True):
+        st.dataframe(baselines_df.fillna("N/A").round(4), use_container_width=True)
 
     if px is not None:
         try:
@@ -205,13 +212,14 @@ else:
     else:
         mdl = selected_entry.get("model")
         feat_names = selected_entry.get("feature_names", [])
-        st.write("모델 타입:", type(mdl))
-        try:
-            params = mdl.get_params()
-            short_params = {k: params[k] for k in list(params.keys())[:10]}
-            st.write("모델 파라미터(일부):", short_params)
-        except Exception:
-            st.write("모델 파라미터를 불러올 수 없습니다.")
+        with st.expander("모델 정보 보기", expanded=False):
+            st.write("모델 타입:", type(mdl))
+            try:
+                params = mdl.get_params()
+                short_params = {k: params[k] for k in list(params.keys())[:10]}
+                st.write("모델 파라미터(일부):", short_params)
+            except Exception:
+                st.write("모델 파라미터를 불러올 수 없습니다.")
 
         if st.button("세션에 이 모델 저장 (trained_model)"):
             st.session_state["trained_model"] = mdl
@@ -249,22 +257,22 @@ else:
             except Exception as e:
                 st.error(f"스냅샷 저장 실패: {e}")
 
-        st.markdown("간단 예측 데모 (상위 1개 샘플)")
-        try:
-            if feat_names:
-                sample_df = active_df[feat_names].head(1).fillna(0)
-            else:
-                num_cols = active_df.select_dtypes(include=["number"]).columns.tolist()
-                sample_df = active_df[num_cols].head(1).fillna(0) if num_cols else None
-            if sample_df is not None and not sample_df.empty:
-                pred = mdl.predict(sample_df.values)
-                st.write("입력 샘플:")
-                st.dataframe(sample_df)
-                st.write("모델 예측 결과:", pred)
-            else:
-                st.info("예측 데모에 사용할 수치형 컬럼이 없습니다.")
-        except Exception as e:
-            st.warning(f"예측 데모 실패: {e}")
+        with st.expander("간단 예측 데모 (상위 1개 샘플)", expanded=False):
+            try:
+                if feat_names:
+                    sample_df = active_df[feat_names].head(1).fillna(0)
+                else:
+                    num_cols = active_df.select_dtypes(include=["number"]).columns.tolist()
+                    sample_df = active_df[num_cols].head(1).fillna(0) if num_cols else None
+                if sample_df is not None and not sample_df.empty:
+                    pred = mdl.predict(sample_df.values)
+                    st.write("입력 샘플:")
+                    st.dataframe(sample_df)
+                    st.write("모델 예측 결과:", pred)
+                else:
+                    st.info("예측 데모에 사용할 수치형 컬럼이 없습니다.")
+            except Exception as e:
+                st.warning(f"예측 데모 실패: {e}")
 
 # Accept best model quick action
 st.markdown("---")

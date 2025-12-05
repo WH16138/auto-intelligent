@@ -21,6 +21,9 @@ import numpy as np
 import traceback
 import logging
 
+from sklearn.base import clone as sk_clone
+from sklearn.metrics import get_scorer
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -62,29 +65,55 @@ def _task_from_y(y: np.ndarray) -> str:
         return "unknown"
 
 
-def _space_rf_classifier(trial: optuna.trial.Trial, random_state: int):
+def _dataset_stats(X: np.ndarray, y: np.ndarray, task: str) -> Dict[str, Any]:
+    n_samples = X.shape[0] if hasattr(X, "shape") else len(y)
+    n_features = X.shape[1] if hasattr(X, "shape") and len(X.shape) > 1 else 0
+    stats: Dict[str, Any] = {"n_samples": n_samples, "n_features": n_features, "imbalance_ratio": None}
+    if task == "classification":
+        try:
+            _, counts = np.unique(y, return_counts=True)
+            if counts.size > 0:
+                stats["imbalance_ratio"] = counts.max() / counts.sum()
+        except Exception:
+            stats["imbalance_ratio"] = None
+    return stats
+
+
+def _space_rf_classifier(trial: optuna.trial.Trial, random_state: int, stats: Optional[Dict[str, Any]] = None):
+    n_samples = (stats or {}).get("n_samples") or 0
+    imbalance = (stats or {}).get("imbalance_ratio")
+    min_leaf_max = max(1, min(20, int(max(2, n_samples * 0.02)) if n_samples else 5))
+    cw_choices = ["balanced", None] if imbalance and imbalance >= 0.7 else [None]
     params = {
         "n_estimators": trial.suggest_int("n_estimators", 50, 300),
         "max_depth": trial.suggest_int("max_depth", 3, 30),
         "max_features": trial.suggest_categorical("max_features", ["sqrt", "log2", 0.3, 0.5, None]),
         "min_samples_split": trial.suggest_int("min_samples_split", 2, 10),
+        "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, min_leaf_max),
         "random_state": random_state,
     }
+    if len(cw_choices) > 1:
+        params["class_weight"] = trial.suggest_categorical("class_weight", cw_choices)
     return RandomForestClassifier(**params)
 
 
-def _space_rf_regressor(trial: optuna.trial.Trial, random_state: int):
+def _space_rf_regressor(trial: optuna.trial.Trial, random_state: int, stats: Optional[Dict[str, Any]] = None):
+    n_samples = (stats or {}).get("n_samples") or 0
+    min_leaf_max = max(1, min(20, int(max(2, n_samples * 0.02)) if n_samples else 5))
     params = {
         "n_estimators": trial.suggest_int("n_estimators", 50, 300),
         "max_depth": trial.suggest_int("max_depth", 3, 30),
         "max_features": trial.suggest_categorical("max_features", ["sqrt", "log2", 0.3, 0.5, None]),
         "min_samples_split": trial.suggest_int("min_samples_split", 2, 10),
+        "min_samples_leaf": trial.suggest_int("min_samples_leaf", 1, min_leaf_max),
         "random_state": random_state,
     }
     return RandomForestRegressor(**params)
 
 
-def _space_gb_classifier(trial: optuna.trial.Trial, random_state: int):
+def _space_gb_classifier(trial: optuna.trial.Trial, random_state: int, stats: Optional[Dict[str, Any]] = None):
+    imbalance = (stats or {}).get("imbalance_ratio")
+    cw_choices = ["balanced", None] if imbalance and imbalance >= 0.7 else [None]
     params = {
         "n_estimators": trial.suggest_int("n_estimators", 50, 300),
         "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
@@ -92,10 +121,12 @@ def _space_gb_classifier(trial: optuna.trial.Trial, random_state: int):
         "subsample": trial.suggest_float("subsample", 0.6, 1.0),
         "random_state": random_state,
     }
+    if len(cw_choices) > 1:
+        params["class_weight"] = trial.suggest_categorical("class_weight", cw_choices)
     return GradientBoostingClassifier(**params)
 
 
-def _space_gb_regressor(trial: optuna.trial.Trial, random_state: int):
+def _space_gb_regressor(trial: optuna.trial.Trial, random_state: int, stats: Optional[Dict[str, Any]] = None):
     params = {
         "n_estimators": trial.suggest_int("n_estimators", 50, 300),
         "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
@@ -106,7 +137,9 @@ def _space_gb_regressor(trial: optuna.trial.Trial, random_state: int):
     return GradientBoostingRegressor(**params)
 
 
-def _space_svc(trial: optuna.trial.Trial, random_state: int):
+def _space_svc(trial: optuna.trial.Trial, random_state: int, stats: Optional[Dict[str, Any]] = None):
+    imbalance = (stats or {}).get("imbalance_ratio")
+    cw_choices = ["balanced", None] if imbalance and imbalance >= 0.7 else [None]
     params = {
         "C": trial.suggest_float("C", 1e-3, 1e3, log=True),
         "gamma": trial.suggest_float("gamma", 1e-4, 1e0, log=True),
@@ -114,10 +147,14 @@ def _space_svc(trial: optuna.trial.Trial, random_state: int):
         "probability": True,
         "random_state": random_state,
     }
+    if len(cw_choices) > 1:
+        params["class_weight"] = trial.suggest_categorical("class_weight", cw_choices)
     return SVC(**params)
 
 
-def _space_logreg(trial: optuna.trial.Trial, random_state: int):
+def _space_logreg(trial: optuna.trial.Trial, random_state: int, stats: Optional[Dict[str, Any]] = None):
+    imbalance = (stats or {}).get("imbalance_ratio")
+    cw_choices = ["balanced", None] if imbalance and imbalance >= 0.7 else [None]
     params = {
         "C": trial.suggest_float("C", 1e-3, 1e2, log=True),
         "penalty": trial.suggest_categorical("penalty", ["l2"]),
@@ -125,6 +162,8 @@ def _space_logreg(trial: optuna.trial.Trial, random_state: int):
         "max_iter": 500,
         "random_state": random_state,
     }
+    if len(cw_choices) > 1:
+        params["class_weight"] = trial.suggest_categorical("class_weight", cw_choices)
     return LogisticRegression(**params)
 
 
@@ -176,6 +215,7 @@ def run_hpo(
     n_jobs: int = 1,
     task_override: Optional[str] = None,
     callbacks: Optional[list] = None,
+    sampler: Optional[Any] = None,
     patience: Optional[int] = None,
     min_trials_before_stop: int = 5,
     tolerance: float = 0.0,
@@ -213,17 +253,51 @@ def run_hpo(
         if direction is None:
             direction = direction_auto
 
+        stats = _dataset_stats(X, y, task)
         builder = MODEL_BUILDERS[model_name]
         best_val_so_far = None
         no_improve_count = 0
 
+        def _cv_score_with_sampler(estimator, X_arr, y_arr, cv_obj, scoring_name, sampler_obj=None):
+            """Apply sampler on train fold only, then score."""
+            scores = []
+            scorer = get_scorer(scoring_name)
+            for train_idx, test_idx in cv_obj.split(X_arr, y_arr):
+                est = sk_clone(estimator)
+                X_tr, y_tr = X_arr[train_idx], y_arr[train_idx]
+                if sampler_obj is not None and hasattr(sampler_obj, "fit_resample"):
+                    try:
+                        smp = sk_clone(sampler_obj)
+                        X_tr, y_tr = smp.fit_resample(X_tr, y_tr)
+                    except Exception:
+                        pass
+                est.fit(X_tr, y_tr)
+                scores.append(scorer(est, X_arr[test_idx], y_arr[test_idx]))
+            return float(np.nanmean(scores)) if len(scores) > 0 else np.nan
+
         def objective(trial: optuna.trial.Trial):
-            clf = builder(trial, random_state=random_state)
+            clf = builder(trial, random_state=random_state, stats=stats)
             try:
-                scores = cross_val_score(clf, X, y, cv=cv_split, scoring=scoring, n_jobs=n_jobs, error_score=np.nan)
+                if sampler is not None and task == "classification":
+                    score_mean = _cv_score_with_sampler(clf, X, y, cv_split, scoring, sampler_obj=sampler)
+                else:
+                    scores = cross_val_score(clf, X, y, cv=cv_split, scoring=scoring, n_jobs=n_jobs, error_score=np.nan)
+                    score_mean = float(np.nanmean(scores))
             except TypeError:
                 scores = cross_val_score(clf, X, y, cv=cv_split, scoring=scoring, error_score=np.nan)
-            return float(np.nanmean(scores))
+                score_mean = float(np.nanmean(scores))
+            except Exception as e:
+                # 병렬 처리(n_jobs>1) 시 Windows/Streamlit 환경에서 pickling 실패가 발생할 수 있으므로 단일 스레드로 폴백
+                if n_jobs != 1:
+                    try:
+                        scores = cross_val_score(clf, X, y, cv=cv_split, scoring=scoring, n_jobs=1, error_score=np.nan)
+                        score_mean = float(np.nanmean(scores))
+                        logger.warning("cross_val_score 병렬 실패(%s), n_jobs=1로 재시도 후 진행합니다.", e)
+                    except Exception:
+                        raise
+                else:
+                    raise
+            return score_mean
 
         def _early_stop_callback(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
             nonlocal best_val_so_far, no_improve_count

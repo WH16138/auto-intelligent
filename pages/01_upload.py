@@ -19,6 +19,7 @@ from sklearn.model_selection import train_test_split
 st.set_page_config(layout="wide")
 
 st.title("1 - Upload (데이터 수집)")
+st.caption("CSV를 올리거나 샘플 데이터로 바로 연습하세요. 업로드하면 기본 train/test 분할이 자동 설정됩니다.")
 
 # Ensure session keys used by app exist
 for key in [
@@ -41,12 +42,12 @@ try:
 except Exception:
     import modules.ingestion as ingestion  # fallback
 
-col1, col2 = st.columns([2, 1])
+col1, col2 = st.columns([1.4, 1])
 
 with col1:
     st.header("CSV 업로드")
     uploaded = st.file_uploader("CSV 파일을 업로드하세요 (또는 아래 샘플 데이터 사용)", type=["csv"], accept_multiple_files=False, key="uploader_page")
-    st.markdown("**옵션:** 파일이 크거나 인코딩 문제가 의심되면 `safe_read_csv`가 여러 인코딩을 시도합니다.")
+    st.markdown("- 인코딩 문제 시 `safe_read_csv`가 여러 인코딩을 시도합니다.\n- 업로드 후 즉시 train/test 분할을 저장합니다.")
     if uploaded is not None:
         try:
             # uploaded is a file-like object; pass directly to safe_read_csv which supports file-like
@@ -166,11 +167,47 @@ with col2:
         n_missing = int(df.isnull().sum().sum())
         st.metric("전체 결측 개수", n_missing)
         st.write("---")
-        st.subheader("데이터 지문 (Fingerprint)")
-        if st.session_state.get("fingerprint") is not None:
-            st.json(st.session_state["fingerprint"])
+        st.subheader("타깃 & 지문")
+
+        # 타깃 설정을 가까이 배치
+        cols = list(df.columns)
+        current_target = st.session_state.get("target_col")
+        sel = st.selectbox("타깃 컬럼 (모델 학습 시 사용)", options=["(없음)"] + cols, index=(0 if current_target is None else (cols.index(current_target) + 1)), key="target_select_box")
+        if sel == "(없음)":
+            st.session_state["target_col"] = None
         else:
-            st.info("지문이 생성되지 않았습니다. 아래 '데이터 지문 생성' 버튼을 사용하세요.")
+            st.session_state["target_col"] = sel
+        if st.session_state.get("target_col"):
+            st.caption(f"현재 선택된 타깃: `{st.session_state.get('target_col')}`")
+
+        # Fingerprint 버튼과 요약을 한 곳에
+        fp = st.session_state.get("fingerprint")
+        col_fp_btn, col_fp_preview = st.columns([1, 2])
+        with col_fp_btn:
+            if st.button("데이터 지문 생성/갱신", help="컬럼 통계·결측·추정 타깃 정보를 담은 요약을 만듭니다."):
+                try:
+                    fp = ingestion.generate_fingerprint(df)
+                    st.session_state["fingerprint"] = fp
+                    inferred = fp.get("target_column")
+                    if inferred and st.session_state.get("target_col") is None:
+                        st.session_state["target_col"] = inferred
+                    st.success("지문 생성 완료")
+                except Exception as e:
+                    st.error(f"지문 생성 실패: {e}")
+        with col_fp_preview:
+            if fp:
+                fp_preview = {
+                    "n_rows": fp.get("n_rows"),
+                    "n_cols": fp.get("n_cols"),
+                    "missing_ratio": fp.get("missing_ratio"),
+                    "inferred_target": fp.get("target_column"),
+                }
+                st.caption("지문 요약: 행/열/결측률/추정 타깃")
+                st.json(fp_preview)
+                with st.expander("지문 전체 보기 (길면 접어서 확인)", expanded=False):
+                    st.json(fp)
+            else:
+                st.info("지문이 없습니다. 위 버튼으로 생성하세요.")
 
 # Full width preview and fingerprint controls
 st.write("### 데이터 미리보기 / 지문 생성")
@@ -190,34 +227,6 @@ else:
             st.write("dtypes:", dtypes)
         except Exception as e:
             st.write("기본 통계 생성 실패:", e)
-
-    # fingerprint generation and target selection
-    col_a, col_b = st.columns([2, 1])
-    with col_a:
-        if st.button("데이터 지문 생성 (Fingerprint)"):
-            try:
-                fp = ingestion.generate_fingerprint(df)
-                st.session_state["fingerprint"] = fp
-                # if fingerprint suggests target and no target selected yet, prefill
-                inferred = fp.get("target_column")
-                if inferred and st.session_state.get("target_col") is None:
-                    st.session_state["target_col"] = inferred
-                st.success("지문 생성 완료")
-                st.json(fp)
-            except Exception as e:
-                st.error(f"지문 생성 실패: {e}")
-    with col_b:
-        # Target selection UI
-        st.markdown("**타깃(target) 설정**")
-        cols = list(df.columns)
-        current_target = st.session_state.get("target_col")
-        sel = st.selectbox("타깃 컬럼 선택 (모델 학습 시 사용)", options=["(없음)"] + cols, index=(0 if current_target is None else (cols.index(current_target) + 1)), key="target_select_box")
-        if sel == "(없음)":
-            st.session_state["target_col"] = None
-        else:
-            st.session_state["target_col"] = sel
-        if st.session_state.get("target_col"):
-            st.caption(f"현재 선택된 타깃: `{st.session_state.get('target_col')}`")
 
 # Download preview as CSV
 if st.session_state.get("df") is not None:

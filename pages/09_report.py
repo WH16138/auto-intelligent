@@ -7,7 +7,6 @@ Generates a clean HTML/Markdown report summarizing the pipeline and offers direc
 import datetime
 import json
 import os
-import zipfile
 from typing import Any, Dict, Optional, Tuple
 
 import pandas as pd
@@ -15,6 +14,7 @@ import streamlit as st
 
 st.set_page_config(layout="wide")
 st.title("9 - Report")
+st.info("한 가지 형식(HTML)으로 깔끔한 보고서를 생성합니다. 기본 선택을 그대로 두고 바로 생성해도 충분합니다.")
 
 # ------------------------- helpers -------------------------
 def _ensure_dir(path: str):
@@ -60,15 +60,12 @@ hpo_res = session.get("hpo_result")
 validation_res = session.get("validation_result") or session.get("evaluation_result")
 
 reports_dir = "reports"
-artifacts_dir = "artifacts"
 _ensure_dir(reports_dir)
 
 now = datetime.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
 default_basename = f"report_{now}"
 report_basename = st.text_input("보고서 파일명(확장자 제외)", value=default_basename)
 html_path = os.path.join(reports_dir, report_basename + ".html")
-md_path = os.path.join(reports_dir, report_basename + ".md")
-zip_path = os.path.join(reports_dir, report_basename + "_bundle.zip")
 
 st.markdown("### 포함 항목 선택")
 include_data = st.checkbox("데이터 개요 / Fingerprint", value=True)
@@ -76,7 +73,6 @@ include_fe = st.checkbox("특징공학 메타", value=True)
 include_baseline = st.checkbox("베이스라인 결과", value=True)
 include_hpo = st.checkbox("HPO 결과", value=True)
 include_validation = st.checkbox("검증 결과", value=True)
-include_artifacts = st.checkbox("artifacts 디렉터리 번들 포함", value=False)
 
 st.markdown("---")
 
@@ -154,18 +150,6 @@ def build_html() -> str:
             parts.append("<p class='meta'>Validation 결과 없음</p>")
         parts.append("</section>")
 
-    parts.append("<section><h2>6. Artifacts</h2>")
-    if os.path.exists(artifacts_dir) and any(os.scandir(artifacts_dir)):
-        parts.append(f"<p>경로: {artifacts_dir}</p><ul>")
-        for root, _, files in os.walk(artifacts_dir):
-            for fn in files:
-                rel = os.path.relpath(os.path.join(root, fn), artifacts_dir)
-                parts.append(f"<li>{rel}</li>")
-        parts.append("</ul>")
-    else:
-        parts.append("<p class='meta'>artifacts 디렉터리가 비어 있습니다.</p>")
-    parts.append("</section>")
-
     parts.append("</body></html>")
     return "\n".join(parts)
 
@@ -208,54 +192,20 @@ def build_md() -> str:
         lines.append(_format_json(validation_res))
         lines.append("```")
     return "\n".join(lines)
+################################################################################
+# Markdown 보고서를 제거하고 HTML만 제공하도록 변경
+################################################################################
 
 
 # ------------------------- actions -------------------------
-col1, col2, col3 = st.columns([2, 1, 1])
-with col1:
-    if st.button("HTML 보고서 생성"):
-        try:
-            html_content = build_html()
-            _save_text(html_path, html_content)
-            st.success(f"HTML 저장 완료: {html_path}")
-            st.download_button("HTML 다운로드", data=html_content, file_name=os.path.basename(html_path), mime="text/html")
-        except Exception as e:
-            st.error(f"HTML 생성 실패: {e}")
-
-with col2:
-    if st.button("Markdown 보고서 생성"):
-        try:
-            md_content = build_md()
-            _save_text(md_path, md_content)
-            st.success(f"Markdown 저장 완료: {md_path}")
-            st.download_button("Markdown 다운로드", data=md_content, file_name=os.path.basename(md_path), mime="text/markdown")
-        except Exception as e:
-            st.error(f"Markdown 생성 실패: {e}")
-
-with col3:
-    if st.button("ZIP 번들 생성"):
-        try:
-            files_to_zip = []
-            if os.path.exists(html_path):
-                files_to_zip.append(html_path)
-            if os.path.exists(md_path):
-                files_to_zip.append(md_path)
-            if include_artifacts and os.path.exists(artifacts_dir):
-                for root, _, files in os.walk(artifacts_dir):
-                    for fn in files:
-                        files_to_zip.append(os.path.join(root, fn))
-            if not files_to_zip:
-                st.warning("먼저 HTML/Markdown을 생성하거나 artifacts를 포함해 주세요.")
-            else:
-                with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                    for p in files_to_zip:
-                        arcname = os.path.relpath(p, start=os.path.dirname(reports_dir))
-                        zf.write(p, arcname=arcname)
-                st.success(f"ZIP 저장 완료: {zip_path}")
-                with open(zip_path, "rb") as f:
-                    st.download_button("ZIP 다운로드", data=f.read(), file_name=os.path.basename(zip_path), mime="application/zip")
-        except Exception as e:
-            st.error(f"ZIP 생성 실패: {e}")
+if st.button("HTML 보고서 생성"):
+    try:
+        html_content = build_html()
+        _save_text(html_path, html_content)
+        st.success(f"HTML 저장 완료: {html_path}")
+        st.download_button("HTML 다운로드", data=html_content, file_name=os.path.basename(html_path), mime="text/html")
+    except Exception as e:
+        st.error(f"HTML 생성 실패: {e}")
 
 st.markdown("---")
-st.info("보고서 생성 후 브라우저에서 바로 다운로드하거나 reports/ 폴더에서 확인할 수 있습니다.")
+st.info("보고서 생성 후 브라우저에서 바로 다운로드하거나 reports/ 폴더에서 확인할 수 있습니다. HTML 형식만 제공합니다.")
