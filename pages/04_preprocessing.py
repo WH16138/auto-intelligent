@@ -1,34 +1,26 @@
 # pages/04_preprocessing.py
 """
-04 - Preprocessing 페이지
+4단계 - 전처리
 
-기능:
-- 전처리 파이프라인 옵션 선택 (숫자/범주 결측치, 스케일링, OneHot 여부, OneHot threshold)
-- 간이(preview) 전처리 적용 (simple_preprocess 또는 build_preprocessor + apply_preprocessor)
-- 전처리 결과 미리보기(상위 N행)
-- 전처리 파이프라인 저장 (joblib)
-- 세션 상태 업데이트: st.session_state['df_preprocessed'], ['preprocessor']
+안내:
+- 타깃 컬럼은 전처리 입력에서 제외하고, 변환 후 다시 붙입니다(누수 방지).
+- 전처리 설정을 본문 상단에서 바로 조정할 수 있습니다.
 """
-import streamlit as st
 import pandas as pd
-import io
-import json
+import streamlit as st
 from typing import Optional
 
 st.set_page_config(layout="wide")
-st.title("4 - Preprocessing (전처리)")
+st.title("4 - 전처리")
 
-# session defaults
-if "df" not in st.session_state:
-    st.session_state["df"] = None
-if "df_preprocessed" not in st.session_state:
-    st.session_state["df_preprocessed"] = None
-if "preprocessing_pipeline" not in st.session_state:
-    st.session_state["preprocessing_pipeline"] = None
-if "target_col" not in st.session_state:
-    st.session_state["target_col"] = None
+# Session defaults
+st.session_state.setdefault("df", None)
+st.session_state.setdefault("df_preprocessed", None)
+st.session_state.setdefault("preprocessing_pipeline", None)
+st.session_state.setdefault("target_col", None)
+st.session_state.setdefault("df_features", None)  # downstream 특징공학/모델 단계에서 사용
 
-# imports (fallback)
+# Imports (fallbacks)
 try:
     from modules import preprocessing as prep
 except Exception:
@@ -40,57 +32,70 @@ except Exception:
     import modules.io_utils as io_utils  # type: ignore
 
 df: Optional[pd.DataFrame] = st.session_state.get("df")
+target_col = st.session_state.get("target_col")
+
 if df is None:
-    st.warning("먼저 Upload 페이지에서 데이터를 업로드하거나 샘플 데이터를 로드하세요.")
+    st.warning("Upload 페이지에서 데이터를 불러온 후 다시 시도하세요.")
     st.stop()
 
-# Sidebar: options
-with st.sidebar:
-    st.header("전처리 기본 옵션")
-    numeric_imputer = st.selectbox("숫자형 결측 대체 전략", options=["median", "mean", "constant"], index=0)
-    categorical_imputer = st.selectbox("범주형 결측 대체 전략", options=["most_frequent", "constant"], index=0)
-    scale_numeric = st.checkbox("숫자형 스케일링 적용 (StandardScaler)", value=True)
-    use_onehot = st.checkbox("범주형에 OneHot 인코더 사용", value=True)
-    onehot_threshold = st.number_input("OneHot 허용 유일값 최대치 (이상이면 Ordinal 처리)", min_value=2, max_value=1000, value=20, step=1)
-    apply_on_preview = st.checkbox("미리보기에서 옵션을 적용하여 결과 확인", value=True)
-    save_default_pipeline_name = st.text_input("저장할 파이프라인 파일명 (artifacts 폴더)", value="artifacts/preprocessor.joblib")
+# Config in main body
+st.markdown("### 전처리 설정")
+col_a, col_b, col_c = st.columns(3)
+with col_a:
+    numeric_imputer = st.selectbox("수치 결측 대치", options=["median", "mean", "constant"], index=0)
+    scale_numeric = st.checkbox("수치 표준화 (StandardScaler)", value=True)
+with col_b:
+    categorical_imputer = st.selectbox("범주 결측 대치", options=["most_frequent", "constant"], index=0)
+    use_onehot = st.checkbox("범주형 One-Hot 인코딩", value=True)
+with col_c:
+    onehot_threshold = st.number_input("One-Hot 최대 범주 수(초과 시 Ordinal)", min_value=2, max_value=1000, value=20, step=1)
+    preview_n = st.number_input("미리보기 행수", min_value=5, max_value=1000, value=50, step=5)
+save_default_pipeline_name = st.text_input("파이프라인 저장 경로", value="artifacts/preprocessor.joblib")
 
-st.markdown("### 현재 데이터 요약")
-col1, col2, col3 = st.columns([1,1,1])
+st.info("타깃 컬럼은 전처리 입력에서 제외하고, 변환 후 다시 붙입니다.")
+
+st.markdown("---")
+st.subheader("데이터 개요")
+col1, col2, col3 = st.columns([1, 1, 1])
 with col1:
     st.metric("행 수", df.shape[0])
 with col2:
     st.metric("열 수", df.shape[1])
 with col3:
     n_missing = int(df.isnull().sum().sum())
-    st.metric("전체 결측 개수", n_missing)
+    st.metric("결측 총합", n_missing)
+
+def _apply_pipeline(df_input: pd.DataFrame):
+    """Build and apply preprocessor excluding target; return (df_trans, preprocessor)."""
+    df_work = df_input.copy()
+    tgt = None
+    if target_col and target_col in df_work.columns:
+        tgt = df_work[target_col].copy()
+        df_work = df_work.drop(columns=[target_col])
+    pre = prep.build_preprocessor(
+        df_work,
+        numeric_imputer=numeric_imputer,
+        categorical_imputer=categorical_imputer,
+        scale_numeric=scale_numeric,
+        use_onehot=use_onehot,
+        onehot_threshold=int(onehot_threshold),
+    )
+    df_trans = prep.apply_preprocessor(pre, df_work)
+    if tgt is not None:
+        df_trans[target_col] = tgt.values
+    return df_trans, pre
 
 st.markdown("---")
 st.subheader("전처리 미리보기")
 
-# choose preview rows
-preview_n = st.number_input("미리보기 행 수", min_value=5, max_value=1000, value=50, step=5)
-
-# Build preprocessor preview (not persisted until '적용' 클릭)
-if st.button("미리보기 전처리 적용"):
+if st.button("미리보기 생성"):
     try:
-        # Build ColumnTransformer based on options
-        pre = prep.build_preprocessor(
-            df,
-            numeric_imputer=numeric_imputer,
-            categorical_imputer=categorical_imputer,
-            scale_numeric=scale_numeric,
-            use_onehot=use_onehot,
-            onehot_threshold=int(onehot_threshold),
-        )
-        # Apply transform (fit_transform)
-        df_trans = prep.apply_preprocessor(pre, df)
+        df_trans, pre = _apply_pipeline(df)
         st.session_state["df_preprocessed_preview"] = df_trans
-        st.success("미리보기 전처리 적용 완료 — 아래에서 결과를 확인하세요.")
+        st.success("미리보기 전처리를 완료했습니다.")
     except Exception as e:
-        st.error(f"미리보기 전처리 실패: {e}")
+        st.error(f"미리보기 실패: {e}")
 
-# Show original and preview side-by-side
 col_orig, col_new = st.columns(2)
 with col_orig:
     st.caption("원본 데이터 (상위)")
@@ -100,50 +105,44 @@ with col_new:
     if st.session_state.get("df_preprocessed_preview") is not None:
         st.dataframe(st.session_state["df_preprocessed_preview"].head(preview_n))
     else:
-        st.info("미리보기 적용 버튼을 눌러 전처리 결과를 확인하세요.")
+        st.info("미리보기 버튼을 눌러주세요.")
 
 st.markdown("---")
 st.subheader("전처리 적용 및 저장")
-
-col_apply, col_actions = st.columns([2,1])
+col_apply, col_actions = st.columns([2, 1])
 with col_apply:
-    if st.button("전처리 적용하고 세션에 저장 (Fit & Transform)"):
+    if st.button("전처리 적용 (Fit & Transform)"):
         try:
-            pre = prep.build_preprocessor(
-                df,
-                numeric_imputer=numeric_imputer,
-                categorical_imputer=categorical_imputer,
-                scale_numeric=scale_numeric,
-                use_onehot=use_onehot,
-                onehot_threshold=int(onehot_threshold),
-            )
-            df_trans = prep.apply_preprocessor(pre, df)
-            # store pipeline and transformed df in session for later pages
+            df_trans, pre = _apply_pipeline(df)
             st.session_state["preprocessing_pipeline"] = pre
             st.session_state["df_preprocessed"] = df_trans
-            st.success("전처리 적용 및 세션 저장 완료 (st.session_state['df_preprocessed']에 저장됨).")
-            # show small preview
+            # 전처리 결과를 기본 특징 데이터로 초기화
+            st.session_state["df_features"] = df_trans
+            st.success("전처리 완료: st.session_state['df_preprocessed'] 에 저장되었습니다.")
             st.dataframe(df_trans.head(preview_n))
         except Exception as e:
             st.error(f"전처리 적용 실패: {e}")
 
+    if st.button("전처리 생략하고 원본 유지"):
+        st.session_state["preprocessing_pipeline"] = None
+        st.session_state["df_preprocessed"] = df.copy()
+        st.session_state["df_features"] = df.copy()
+        st.success("원본 데이터를 그대로 다음 단계에 사용합니다.")
+
 with col_actions:
-    st.markdown("파이프라인 저장/내보내기")
-    if st.button("파이프라인을 artifacts에 저장"):
+    st.markdown("파이프라인 저장")
+    if st.button("파이프라인 저장 (artifacts)"):
         pre = st.session_state.get("preprocessing_pipeline")
         if pre is None:
-            st.warning("저장할 파이프라인이 없습니다. 먼저 '전처리 적용'을 수행하세요.")
+            st.warning("먼저 '전처리 적용'을 수행하세요.")
         else:
             try:
-                # use provided path or default
                 path = save_default_pipeline_name or "artifacts/preprocessor.joblib"
-                # attempt to use preprocessing.save_pipeline if present
                 if hasattr(prep, "save_pipeline"):
                     prep.save_pipeline(pre, path)
                 else:
-                    # fallback to io_utils.save_model
                     io_utils.save_model(pre, path)
-                st.success(f"파이프라인이 저장되었습니다: {path}")
+                st.success(f"파이프라인을 저장했습니다: {path}")
             except Exception as e:
                 st.error(f"파이프라인 저장 실패: {e}")
 
@@ -151,9 +150,14 @@ with col_actions:
     st.markdown("전처리 결과 다운로드")
     if st.session_state.get("df_preprocessed") is not None:
         csv_bytes = st.session_state["df_preprocessed"].to_csv(index=False).encode("utf-8")
-        st.download_button("전처리된 데이터 다운로드 (CSV)", data=csv_bytes, file_name="df_preprocessed.csv", mime="text/csv")
+        st.download_button(
+            "전처리 결과 다운로드 (CSV)",
+            data=csv_bytes,
+            file_name="df_preprocessed.csv",
+            mime="text/csv",
+        )
     else:
-        st.info("전처리된 데이터가 없습니다. 먼저 '전처리 적용'을 실행하세요.")
+        st.info("아직 전처리 결과가 없습니다.")
 
 st.markdown("---")
-st.write("다음 단계: 특징공학(Feature Engineering) 또는 모델 선택 페이지로 이동하세요.")
+st.write("다음 단계: Feature Engineering 페이지로 이동하세요.")

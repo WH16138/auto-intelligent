@@ -92,25 +92,33 @@ Example output:
 
 ## 🗂️ Project Structure (Suggested)
 
-Auto-Intelligent/
+project-root/
 │
-├── backend/
-│ ├── main.py # FastAPI server
-│ ├── analysis.py # dataset summary & heuristics
-│ ├── recommend.py # model/feature recommendation logic
-│ ├── visualize.py # matplotlib-based image generation
-│ └── utils.py
+├── modules/
+│ ├── pipeline.py
+│ ├── feature_engineering.py
+│ ├── hpo.py
+│ ├── explain.py
+│ ├── eda.py
+│ ├── ingestion.py
+│ ├── io_utils.py
+│ ├── model_search.py
+│ ├── preprocessing.py
+│ └── visualization.py
 │
-├── frontend/
-│ ├── index.html
-│ ├── script.js
-│ └── style.css
+├── pages/
+│ ├── 01_upload.py
+│ ├── 02_overview.py
+│ ├── 03_preprocessing.py
+│ ├── 04_feature_engineering.py
+│ ├── 05_modeling.py
+│ ├── 06_model_selection.py
+│ ├── 07_hpo.py
+│ ├── 08_validation.py
+│ └── 09_report.py
 │
-├── README.md
-├── LICENSE
-└── requirements.txt
-
----
+├── project_overview.md
+└── README.md ← (this document)
 
 ## ▶️ How to Run
 

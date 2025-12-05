@@ -78,11 +78,27 @@ with col1:
                 st.error(f"샘플 로드 실패: {e}")
 
     st.markdown("---")
-    if st.button("세션 데이터 제거 (df 초기화)"):
-        st.session_state["df"] = None
-        st.session_state["fingerprint"] = None
-        st.session_state["target_col"] = None
-        st.success("세션의 데이터가 초기화되었습니다.")
+    if st.button("세션 데이터 제거 (완전 초기화)"):
+        # Clear all session entries then set expected keys to None so 다른 페이지도 안전하게 동작
+        st.session_state.clear()
+        for k in [
+            "df",
+            "fingerprint",
+            "target_col",
+            "df_preprocessed",
+            "preprocessing_pipeline",
+            "df_features",
+            "feature_engineering_meta",
+            "baselines_df",
+            "baseline_models",
+            "best_model_name",
+            "trained_model",
+            "problem_type",
+            "hpo_result",
+            "validation_result",
+        ]:
+            st.session_state[k] = None
+        st.success("세션 데이터를 모두 삭제했습니다. 이어서 새 데이터를 업로드하거나 샘플을 로드하세요.")
 
 with col2:
     st.header("업로드 상태")

@@ -66,7 +66,6 @@ with st.expander("현재 데이터 지문 (Fingerprint) 보기"):
                 fp = ingestion.generate_fingerprint(df)
                 st.session_state["fingerprint"] = fp
                 st.success("지문 생성 완료")
-                st.experimental_rerun()
             except Exception as e:
                 st.error(f"지문 생성 실패: {e}")
 
@@ -169,7 +168,6 @@ with col_left:
             except Exception:
                 st.session_state["fingerprint"] = None
             st.success(f"적용 완료. 드롭된 컬럼: {dropped} / 타입 변환 시도된 컬럼: {casted}")
-            st.experimental_rerun()
 
 with col_right:
     st.subheader("컬럼 제거(빠른 선택)")
@@ -184,7 +182,6 @@ with col_right:
             except Exception:
                 st.session_state["fingerprint"] = None
             st.success(f"컬럼 {drop_sel} 제거 완료.")
-            st.experimental_rerun()
         else:
             st.info("먼저 제거할 컬럼을 선택하세요.")
 
