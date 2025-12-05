@@ -18,6 +18,17 @@ import streamlit as st
 
 st.set_page_config(layout="wide")
 st.title("10 - 모델 추론 및 다운로드")
+st.info(
+    "이미 학습된 모델로 새 CSV를 예측하고, Kaggle/Dacon 제출용 파일까지 바로 만들 수 있습니다."
+)
+with st.expander("빠른 사용 순서 보기", expanded=True):
+    st.markdown(
+        "1) **모델 선택** (세션에 저장된 학습/베이스라인)\n"
+        "2) **예측 옵션**: 예측 컬럼명·제출 파일명·ID 컬럼 지정\n"
+        "3) **CSV 업로드** → 자동 전처리/특징공학/정렬 후 예측\n"
+        "4) **결과 다운로드**: 전체 예측 CSV + 제출용(ID+예측)\n"
+        "5) **모델 다운로드**: 하단에서 피클로 내보내 재사용/배포 가능\n"
+    )
 
 # Session defaults
 for key in [
@@ -149,9 +160,11 @@ if preproc_obj is None:
     st.error("전처리 파이프라인이 세션에 없습니다. 04 전처리 단계에서 파이프라인을 적용한 뒤 다시 시도하세요.")
     st.stop()
 
+st.markdown("### 예측 옵션")
 pred_col_name = st.text_input("예측 컬럼 이름", value=target_col or "prediction")
 submit_filename = st.text_input("제출용 파일 이름", value="submission.csv")
 id_column = st.text_input("ID 컬럼 이름 (없으면 입력 생략)", value="ID")
+st.caption("ID 컬럼을 지정하면 제출용 파일에 함께 포함됩니다. 없으면 예측 컬럼만 생성합니다.")
 
 uploaded_pred = st.file_uploader("예측용 CSV 업로드 (타깃 컬럼 제외)", type=["csv"], accept_multiple_files=False, key="inference_uploader")
 
