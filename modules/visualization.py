@@ -87,7 +87,11 @@ def pair_sample_plotly(df: pd.DataFrame, numeric_cols: Optional[List[str]] = Non
         numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
     if not numeric_cols:
         raise ValueError("No numeric columns for pair sample plot.")
-    sample = df[numeric_cols].dropna().sample(n=min(sample_n, max(10, len(df))), random_state=1)
+    df_clean = df[numeric_cols].dropna()
+    if df_clean.shape[0] < 2:
+        raise ValueError("Not enough rows for pair sample plot.")
+    sample_size = min(sample_n, df_clean.shape[0])
+    sample = df_clean.sample(n=sample_size, random_state=1)
     # use plotly scatter_matrix
     fig = px.scatter_matrix(sample, dimensions=numeric_cols, title=title or "Pairwise sample scatter matrix")
     fig.update_layout(margin=dict(l=10, r=10, t=40, b=10), height=800)

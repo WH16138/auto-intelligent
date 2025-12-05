@@ -1,0 +1,2034 @@
+<html><head><meta charset='utf-8'><title>Auto-Intelligent Report</title>
+
+<style>
+body { font-family: 'Segoe UI', Arial, sans-serif; padding: 24px; color: #1f2933; background: #f9fafb; }
+h1, h2, h3 { color: #0f172a; }
+section { margin-bottom: 32px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+code, pre { background: #f1f5f9; padding: 8px; border-radius: 6px; display: block; white-space: pre-wrap; }
+table { width: 100%; }
+th, td { padding: 6px 10px; }
+.meta { color: #4b5563; font-size: 0.95em; }
+</style>
+
+</head><body>
+<h1>Auto-Intelligent Report</h1>
+<p class='meta'>생성 시각 (UTC): 20251205T153115Z</p>
+<p class='meta'>데이터셋: 전처리본 | 타깃: Prospect</p>
+<section><h2>1. 데이터 개요</h2>
+<p>행/열: 3019 × 84</p>
+<h3>Fingerprint</h3>
+<pre>{
+  "n_rows": 3019,
+  "n_cols": 65,
+  "n_missing_total": 0,
+  "missing_ratio": 0.0,
+  "columns": {
+    "Age": {
+      "dtype": "int64",
+      "n_missing": 0,
+      "n_unique": 6,
+      "n_total": 3019,
+      "mean": 19.63232858562438,
+      "std": 1.2356377997005141,
+      "min": 16.0,
+      "max": 21.0
+    },
+    "Height": {
+      "dtype": "int64",
+      "n_missing": 0,
+      "n_unique": 44,
+      "n_total": 3019,
+      "mean": 180.89234845975488,
+      "std": 6.800187432839111,
+      "min": 160.0,
+      "max": 204.0
+    },
+    "Weight": {
+      "dtype": "int64",
+      "n_missing": 0,
+      "n_unique": 47,
+      "n_total": 3019,
+      "mean": 73.08115269956939,
+      "std": 6.539757535601385,
+      "min": 49.0,
+      "max": 99.0
+    },
+    "Position": {
+      "dtype": "object",
+      "n_missing": 0,
+      "n_unique": 15,
+      "n_total": 3019,
+      "top_values": {
+        "CAM": 612,
+        "CB": 534,
+        "ST": 446,
+        "GK": 314,
+        "RM": 292
+      }
+    },
+    "PreferredFoot": {
+      "dtype": "object",
+      "n_missing": 0,
+      "n_unique": 2,
+      "n_total": 3019,
+      "top_values": {
+        "Right": 2284,
+        "Left": 735
+      }
+    },
+    "AttackingWorkRate": {
+      "dtype": "object",
+      "n_missing": 0,
+      "n_unique": 3,
+      "n_total": 3019,
+      "top_values": {
+        "Medium": 2188,
+        "High": 736,
+        "Low": 95
+      }
+    },
+    "DefensiveWorkRate": {
+      "dtype": "object",
+      "n_missing": 0,
+      "n_unique": 3,
+      "n_total": 3019,
+      "top_values": {
+        "Medium": 2515,
+        "High": 302,
+        "Low": 202
+      }
+    },
+    "PaceTotal": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 59,
+      "n_total": 3019,
+      "mean": 5.760520669095728,
+      "std": 1.2980243158340439,
+      "min": 0.7246,
+      "max": 9.7101
+    },
+    "ShootingTotal": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 61,
+      "n_total": 3019,
+      "mean": 4.292594534614111,
+      "std": 1.6249822490155332,
+      "min": 0.5263,
+      "max": 9.8684
+    },
+    "PassingTotal": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 55,
+      "n_total": 3019,
+      "mean": 4.0809176548526,
+      "std": 1.3015384025770051,
+      "min": 0.0,
+      "max": 8.2353
+    },
+    "DribblingTotal": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 60,
+      "n_total": 3019,
+      "mean": 4.7083626697581975,
+      "std": 1.3665955119715982,
+      "min": 0.0,
+      "max": 9.3939
+    },
+    "DefendingTotal": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 67,
+      "n_total": 3019,
+      "mean": 3.816095594567738,
+      "std": 2.029422781921935,
+      "min": 0.0,
+      "max": 8.6842
+    },
+    "PhysicalityTotal": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 55,
+      "n_total": 3019,
+      "mean": 4.549276217290494,
+      "std": 1.414989157045662,
+      "min": 0.0,
+      "max": 9.3443
+    },
+    "Crossing": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 73,
+      "n_total": 3019,
+      "mean": 4.371895693938391,
+      "std": 1.7900452476727264,
+      "min": 0.1136,
+      "max": 8.5227
+    },
+    "Finishing": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 81,
+      "n_total": 3019,
+      "mean": 4.345082842000663,
+      "std": 2.037800865625184,
+      "min": 0.0,
+      "max": 10.0
+    },
+    "HeadingAccuracy": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 75,
+      "n_total": 3019,
+      "mean": 4.7508208015899305,
+      "std": 1.7180726348979471,
+      "min": 0.1136,
+      "max": 8.5227
+    },
+    "ShortPassing": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 71,
+      "n_total": 3019,
+      "mean": 5.368810069559457,
+      "std": 1.6277377746797075,
+      "min": 0.6024,
+      "max": 9.2771
+    },
+    "Volleys": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 76,
+      "n_total": 3019,
+      "mean": 4.048383968201391,
+      "std": 1.7436027202771107,
+      "min": 0.0,
+      "max": 9.7701
+    },
+    "Dribbling": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 84,
+      "n_total": 3019,
+      "mean": 5.415954057634979,
+      "std": 1.9718383354337345,
+      "min": 0.2174,
+      "max": 9.6739
+    },
+    "Curve": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 75,
+      "n_total": 3019,
+      "mean": 4.2414904935409075,
+      "std": 1.748831872298474,
+      "min": 0.0,
+      "max": 9.6552
+    },
+    "FKAccuracy": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 74,
+      "n_total": 3019,
+      "mean": 3.796328453130176,
+      "std": 1.5323898562158909,
+      "min": 0.1111,
+      "max": 9.2222
+    },
+    "LongPassing": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 69,
+      "n_total": 3019,
+      "mean": 4.694633189797947,
+      "std": 1.6431225956912952,
+      "min": 0.5952,
+      "max": 9.0476
+    },
+    "BallControl": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 79,
+      "n_total": 3019,
+      "mean": 5.555828949983438,
+      "std": 1.7982039298302759,
+      "min": 0.3371,
+      "max": 9.4382
+    },
+    "Acceleration": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 80,
+      "n_total": 3019,
+      "mean": 6.115808148393507,
+      "std": 1.844953913495488,
+      "min": 0.0,
+      "max": 9.759
+    },
+    "SprintSpeed": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 81,
+      "n_total": 3019,
+      "mean": 6.044849950314674,
+      "std": 1.8225150583125076,
+      "min": 0.0,
+      "max": 9.7561
+    },
+    "Agility": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 75,
+      "n_total": 3019,
+      "mean": 5.783240907585292,
+      "std": 1.9309889634032764,
+      "min": 0.1316,
+      "max": 10.0
+    },
+    "Reactions": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 54,
+      "n_total": 3019,
+      "mean": 3.9271582643259353,
+      "std": 1.2478370405738615,
+      "min": 0.0,
+      "max": 9.0625
+    },
+    "Balance": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 75,
+      "n_total": 3019,
+      "mean": 5.839417157999338,
+      "std": 1.8989487798985878,
+      "min": 0.1333,
+      "max": 10.0
+    },
+    "ShotPower": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 65,
+      "n_total": 3019,
+      "mean": 4.483316197416364,
+      "std": 1.5089867105852781,
+      "min": 0.2632,
+      "max": 10.0
+    },
+    "Jumping": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 62,
+      "n_total": 3019,
+      "mean": 5.226803908579,
+      "std": 1.4477688944696467,
+      "min": 1.0959,
+      "max": 9.589
+    },
+    "Stamina": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 77,
+      "n_total": 3019,
+      "mean": 5.3008316661146075,
+      "std": 1.8077860143030886,
+      "min": 0.1235,
+      "max": 10.0
+    },
+    "Strength": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 65,
+      "n_total": 3019,
+      "mean": 4.679658694932097,
+      "std": 1.6832361309447876,
+      "min": 0.2817,
+      "max": 9.5775
+    },
+    "LongShots": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 77,
+      "n_total": 3019,
+      "mean": 4.27884041073203,
+      "std": 1.9906665436086743,
+      "min": 0.0,
+      "max": 9.5402
+    },
+    "Aggression": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 75,
+      "n_total": 3019,
+      "mean": 4.5700368333885395,
+      "std": 1.7155110474118076,
+      "min": 0.0,
+      "max": 9.0588
+    },
+    "Interceptions": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 78,
+      "n_total": 3019,
+      "mean": 4.255209440211991,
+      "std": 2.1748121927036497,
+      "min": 0.2273,
+      "max": 9.2045
+    },
+    "Positioning": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 79,
+      "n_total": 3019,
+      "mean": 4.712949122225903,
+      "std": 1.915240317600747,
+      "min": 0.1064,
+      "max": 9.2553
+    },
+    "Vision": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 64,
+      "n_total": 3019,
+      "mean": 4.711863000993707,
+      "std": 1.4456941077810226,
+      "min": 0.5952,
+      "max": 9.2857
+    },
+    "Penalties": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 73,
+      "n_total": 3019,
+      "mean": 4.484967605167274,
+      "std": 1.6477837544578466,
+      "min": 0.0,
+      "max": 8.7209
+    },
+    "Composure": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 66,
+      "n_total": 3019,
+      "mean": 4.634023385226897,
+      "std": 1.3278825851719658,
+      "min": 0.6024,
+      "max": 8.9157
+    },
+    "Marking": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 78,
+      "n_total": 3019,
+      "mean": 4.185552500828089,
+      "std": 2.1047583877659166,
+      "min": 0.1124,
+      "max": 8.9888
+    },
+    "StandingTackle": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 76,
+      "n_total": 3019,
+      "mean": 4.31386783703213,
+      "std": 2.251929526118737,
+      "min": 0.1149,
+      "max": 8.8506
+    },
+    "SlidingTackle": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 75,
+      "n_total": 3019,
+      "mean": 4.279642066909573,
+      "std": 2.248173936003768,
+      "min": 0.2381,
+      "max": 9.2857
+    },
+    "GKDiving": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 42,
+      "n_total": 3019,
+      "mean": 1.4928543557469358,
+      "std": 1.7237556745192895,
+      "min": 0.3409,
+      "max": 8.75
+    },
+    "GKHandling": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 40,
+      "n_total": 3019,
+      "mean": 1.459995760185492,
+      "std": 1.6623925872479965,
+      "min": 0.3409,
+      "max": 8.6364
+    },
+    "GKKicking": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 42,
+      "n_total": 3019,
+      "mean": 1.4096837694600861,
+      "std": 1.6050377627465693,
+      "min": 0.3297,
+      "max": 7.9121
+    },
+    "GKPositioning": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 45,
+      "n_total": 3019,
+      "mean": 1.4406926465717125,
+      "std": 1.610872130162369,
+      "min": 0.3371,
+      "max": 8.6517
+    },
+    "GKReflexes": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 44,
+      "n_total": 3019,
+      "mean": 1.4871711162636636,
+      "std": 1.7544761055683784,
+      "min": 0.3409,
+      "max": 8.8636
+    },
+    "STRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 64,
+      "n_total": 3019,
+      "mean": 4.601224776416032,
+      "std": 1.7377189888997047,
+      "min": 0.0,
+      "max": 9.726
+    },
+    "LWRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 67,
+      "n_total": 3019,
+      "mean": 5.0208327923153355,
+      "std": 1.8415422765605178,
+      "min": 0.1316,
+      "max": 9.3421
+    },
+    "LFRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 66,
+      "n_total": 3019,
+      "mean": 4.836344087446174,
+      "std": 1.7803480238401064,
+      "min": 0.1316,
+      "max": 9.0789
+    },
+    "CFRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 66,
+      "n_total": 3019,
+      "mean": 4.836344087446174,
+      "std": 1.7803480238401064,
+      "min": 0.1316,
+      "max": 9.0789
+    },
+    "RFRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 66,
+      "n_total": 3019,
+      "mean": 4.836344087446174,
+      "std": 1.7803480238401064,
+      "min": 0.1316,
+      "max": 9.0789
+    },
+    "RWRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 67,
+      "n_total": 3019,
+      "mean": 5.0208327923153355,
+      "std": 1.8415422765605178,
+      "min": 0.1316,
+      "max": 9.3421
+    },
+    "CAMRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 67,
+      "n_total": 3019,
+      "mean": 4.946362868499504,
+      "std": 1.782596304601274,
+      "min": 0.1333,
+      "max": 9.0667
+    },
+    "LMRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 67,
+      "n_total": 3019,
+      "mean": 4.961191023517721,
+      "std": 1.8148543852271208,
+      "min": 0.0,
+      "max": 9.1892
+    },
+    "CMRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 65,
+      "n_total": 3019,
+      "mean": 4.74805647565419,
+      "std": 1.6772622417839187,
+      "min": 0.0,
+      "max": 9.3151
+    },
+    "RMRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 67,
+      "n_total": 3019,
+      "mean": 4.961191023517721,
+      "std": 1.8148543852271208,
+      "min": 0.0,
+      "max": 9.1892
+    },
+    "LWBRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 63,
+      "n_total": 3019,
+      "mean": 4.87443176548526,
+      "std": 1.815744370899123,
+      "min": 0.0,
+      "max": 9.0141
+    },
+    "CDMRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 64,
+      "n_total": 3019,
+      "mean": 4.508399304405433,
+      "std": 1.809723035095055,
+      "min": 0.0,
+      "max": 9.1429
+    },
+    "RWBRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 63,
+      "n_total": 3019,
+      "mean": 4.87443176548526,
+      "std": 1.815744370899123,
+      "min": 0.0,
+      "max": 9.0141
+    },
+    "LBRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 64,
+      "n_total": 3019,
+      "mean": 4.852789301093077,
+      "std": 1.877633191505664,
+      "min": 0.0,
+      "max": 9.1429
+    },
+    "CBRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 66,
+      "n_total": 3019,
+      "mean": 4.330720370983769,
+      "std": 1.8807596010752783,
+      "min": 0.0,
+      "max": 9.0278
+    },
+    "RBRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 64,
+      "n_total": 3019,
+      "mean": 4.852789301093077,
+      "std": 1.877633191505664,
+      "min": 0.0,
+      "max": 9.1429
+    },
+    "GKRating": {
+      "dtype": "float64",
+      "n_missing": 0,
+      "n_unique": 36,
+      "n_total": 3019,
+      "mean": 1.424188473004306,
+      "std": 1.6069248094400033,
+      "min": 0.25,
+      "max": 8.625
+    },
+    "Prospect": {
+      "dtype": "int64",
+      "n_missing": 0,
+      "n_unique": 2,
+      "n_total": 3019,
+      "mean": 0.36104670420669094,
+      "std": 0.48038361783391725,
+      "min": 0.0,
+      "max": 1.0
+    }
+  },
+  "cardinality_summary": {
+    "low": 5,
+    "medium": 60,
+    "high": 0
+  },
+  "target_column": "Position"
+}</pre>
+</section>
+<section><h2>2. 특징공학</h2>
+<h3>생성 특징 메타</h3>
+<pre>{
+  "new_features": [
+    "Height__div__Curve",
+    "Height__minus__Curve",
+    "Height__div__Composure",
+    "Height__minus__Composure",
+    "Height__div__LWBRating",
+    "Height__minus__LWBRating",
+    "Height__div__RWBRating",
+    "Height__minus__RWBRating",
+    "Height__div__CBRating",
+    "Height__minus__CBRating",
+    "Height__div__GKReflexes",
+    "Height__minus__GKReflexes",
+    "Height__div__GKDiving",
+    "Height__minus__GKDiving",
+    "Height__div__LongShots",
+    "Height__minus__LongShots",
+    "Height__div__Penalties",
+    "Height__minus__Penalties",
+    "Curve__div__Composure",
+    "Curve__minus__Composure",
+    "Curve__div__LWBRating",
+    "Curve__minus__LWBRating",
+    "Curve__div__RWBRating",
+    "Curve__minus__RWBRating",
+    "Curve__div__CBRating",
+    "Curve__minus__CBRating",
+    "Curve__div__GKReflexes",
+    "Curve__minus__GKReflexes",
+    "Curve__div__GKDiving",
+    "Curve__minus__GKDiving",
+    "Curve__div__LongShots",
+    "Curve__minus__LongShots",
+    "Curve__div__Penalties",
+    "Curve__minus__Penalties",
+    "Composure__div__LWBRating",
+    "Composure__minus__LWBRating",
+    "Composure__div__RWBRating",
+    "Composure__minus__RWBRating",
+    "Composure__div__CBRating",
+    "Composure__minus__CBRating",
+    "Composure__div__GKReflexes",
+    "Composure__minus__GKReflexes",
+    "Composure__div__GKDiving",
+    "Composure__minus__GKDiving",
+    "Composure__div__LongShots",
+    "Composure__minus__LongShots",
+    "Composure__div__Penalties",
+    "Composure__minus__Penalties",
+    "LWBRating__div__RWBRating",
+    "LWBRating__minus__RWBRating",
+    "LWBRating__div__CBRating",
+    "LWBRating__minus__CBRating",
+    "LWBRating__div__GKReflexes",
+    "LWBRating__minus__GKReflexes",
+    "LWBRating__div__GKDiving",
+    "LWBRating__minus__GKDiving",
+    "LWBRating__div__LongShots",
+    "LWBRating__minus__LongShots",
+    "LWBRating__div__Penalties",
+    "LWBRating__minus__Penalties",
+    "RWBRating__div__CBRating",
+    "RWBRating__minus__CBRating",
+    "RWBRating__div__GKReflexes",
+    "RWBRating__minus__GKReflexes",
+    "RWBRating__div__GKDiving",
+    "RWBRating__minus__GKDiving",
+    "RWBRating__div__LongShots",
+    "RWBRating__minus__LongShots",
+    "RWBRating__div__Penalties",
+    "RWBRating__minus__Penalties",
+    "CBRating__div__GKReflexes",
+    "CBRating__minus__GKReflexes",
+    "CBRating__div__GKDiving",
+    "CBRating__minus__GKDiving",
+    "CBRating__div__LongShots",
+    "CBRating__minus__LongShots",
+    "CBRating__div__Penalties",
+    "CBRating__minus__Penalties",
+    "GKReflexes__div__GKDiving",
+    "GKReflexes__minus__GKDiving",
+    "GKReflexes__div__LongShots",
+    "GKReflexes__minus__LongShots",
+    "GKReflexes__div__Penalties",
+    "GKReflexes__minus__Penalties",
+    "GKDiving__div__LongShots",
+    "GKDiving__minus__LongShots",
+    "GKDiving__div__Penalties",
+    "GKDiving__minus__Penalties",
+    "LongShots__div__Penalties",
+    "LongShots__minus__Penalties",
+    "Position___CF__log1p",
+    "Position___RW__log1p",
+    "Position___LW__log1p",
+    "Curve__div__CBRating__log1p",
+    "GKDiving__div__LongShots__log1p",
+    "GKReflexes__div__LongShots__log1p",
+    "Position___RWB__log1p",
+    "LWBRating__div__CBRating__log1p",
+    "RWBRating__div__CBRating__log1p",
+    "Position___LWB__log1p",
+    "LWBRating__div__LongShots__log1p",
+    "RWBRating__div__LongShots__log1p",
+    "Height__div__LongShots__log1p",
+    "Composure__div__LongShots__log1p",
+    "GKReflexes__div__GKDiving__log1p",
+    "Curve__div__GKDiving__log1p",
+    "AttackingWorkRate___Low__log1p",
+    "LWBRating__div__GKDiving__log1p",
+    "RWBRating__div__GKDiving__log1p",
+    "Height__div__CBRating__log1p",
+    "Position___LB__log1p",
+    "Position___CM__log1p",
+    "Composure__div__CBRating__log1p",
+    "Position___RB__log1p",
+    "Position___CDM__log1p",
+    "Position___LM__log1p",
+    "Curve__div__GKReflexes__log1p",
+    "Height__div__Curve__log1p",
+    "DefensiveWorkRate___Low__log1p",
+    "Composure__div__GKDiving__log1p",
+    "Curve__div__LongShots__log1p",
+    "LWBRating__div__GKReflexes__log1p",
+    "RWBRating__div__GKReflexes__log1p",
+    "Curve__div__Composure__log1p",
+    "CBRating__div__GKDiving__log1p",
+    "Position___RM__log1p",
+    "DefensiveWorkRate___High__log1p",
+    "CBRating__div__LongShots__log1p",
+    "GKRating__log1p",
+    "Position___GK__log1p",
+    "GKPositioning__log1p",
+    "GKReflexes__log1p",
+    "GKDiving__log1p",
+    "GKHandling__log1p",
+    "GKKicking__log1p",
+    "Composure__div__GKReflexes__log1p",
+    "LWBRating__minus__GKReflexes__log1p",
+    "RWBRating__minus__GKReflexes__log1p",
+    "LWBRating__minus__GKDiving__log1p",
+    "RWBRating__minus__GKDiving__log1p",
+    "Height__div__GKReflexes__log1p",
+    "Position___ST__log1p",
+    "GKReflexes__minus__Penalties__log1p",
+    "GKDiving__minus__Penalties__log1p",
+    "Curve__minus__GKReflexes__log1p",
+    "Curve__minus__GKDiving__log1p",
+    "CBRating__minus__GKReflexes__log1p",
+    "CBRating__minus__GKDiving__log1p",
+    "GKReflexes__minus__LongShots__log1p",
+    "DefensiveWorkRate___Medium__log1p",
+    "GKDiving__minus__LongShots__log1p",
+    "Composure__minus__GKReflexes__log1p",
+    "Composure__minus__GKDiving__log1p",
+    "CBRating__div__GKReflexes__log1p",
+    "Position___CB__log1p",
+    "Position___CAM__log1p",
+    "Acceleration__log1p",
+    "SprintSpeed__log1p",
+    "BallControl__log1p",
+    "AttackingWorkRate___High__log1p",
+    "LMRating__log1p",
+    "RMRating__log1p",
+    "Dribbling__log1p",
+    "PreferredFoot___Left__log1p",
+    "PreferredFoot___Right__log1p",
+    "LWRating__log1p",
+    "RWRating__log1p",
+    "Curve__div__Penalties__log1p",
+    "GKDiving__div__Penalties__log1p",
+    "LWBRating__log1p",
+    "RWBRating__log1p",
+    "ShortPassing__log1p",
+    "LFRating__log1p",
+    "CFRating__log1p",
+    "RFRating__log1p",
+    "CAMRating__log1p",
+    "CMRating__log1p",
+    "STRating__log1p",
+    "LWBRating__div__Penalties__log1p",
+    "RWBRating__div__Penalties__log1p",
+    "AttackingWorkRate___Medium__log1p",
+    "LBRating__log1p",
+    "RBRating__log1p",
+    "Stamina__log1p",
+    "Height__div__Penalties__log1p",
+    "Positioning__log1p",
+    "Curve__div__LWBRating__log1p",
+    "Curve__div__RWBRating__log1p",
+    "HeadingAccuracy__log1p",
+    "GKReflexes__div__Penalties__log1p",
+    "Height__minus__LWBRating__log1p",
+    "Height__minus__RWBRating__log1p",
+    "Height__minus__CBRating__log1p",
+    "Balance__log1p",
+    "CDMRating__log1p",
+    "LongShots__div__Penalties__log1p",
+    "Agility__log1p",
+    "Age__log1p",
+    "Penalties__log1p",
+    "Crossing__log1p"
+  ],
+  "method": {
+    "Height__div__Curve": "ratio",
+    "Height__minus__Curve": "diff",
+    "Height__div__Composure": "ratio",
+    "Height__minus__Composure": "diff",
+    "Height__div__LWBRating": "ratio",
+    "Height__minus__LWBRating": "diff",
+    "Height__div__RWBRating": "ratio",
+    "Height__minus__RWBRating": "diff",
+    "Height__div__CBRating": "ratio",
+    "Height__minus__CBRating": "diff",
+    "Height__div__GKReflexes": "ratio",
+    "Height__minus__GKReflexes": "diff",
+    "Height__div__GKDiving": "ratio",
+    "Height__minus__GKDiving": "diff",
+    "Height__div__LongShots": "ratio",
+    "Height__minus__LongShots": "diff",
+    "Height__div__Penalties": "ratio",
+    "Height__minus__Penalties": "diff",
+    "Curve__div__Composure": "ratio",
+    "Curve__minus__Composure": "diff",
+    "Curve__div__LWBRating": "ratio",
+    "Curve__minus__LWBRating": "diff",
+    "Curve__div__RWBRating": "ratio",
+    "Curve__minus__RWBRating": "diff",
+    "Curve__div__CBRating": "ratio",
+    "Curve__minus__CBRating": "diff",
+    "Curve__div__GKReflexes": "ratio",
+    "Curve__minus__GKReflexes": "diff",
+    "Curve__div__GKDiving": "ratio",
+    "Curve__minus__GKDiving": "diff",
+    "Curve__div__LongShots": "ratio",
+    "Curve__minus__LongShots": "diff",
+    "Curve__div__Penalties": "ratio",
+    "Curve__minus__Penalties": "diff",
+    "Composure__div__LWBRating": "ratio",
+    "Composure__minus__LWBRating": "diff",
+    "Composure__div__RWBRating": "ratio",
+    "Composure__minus__RWBRating": "diff",
+    "Composure__div__CBRating": "ratio",
+    "Composure__minus__CBRating": "diff",
+    "Composure__div__GKReflexes": "ratio",
+    "Composure__minus__GKReflexes": "diff",
+    "Composure__div__GKDiving": "ratio",
+    "Composure__minus__GKDiving": "diff",
+    "Composure__div__LongShots": "ratio",
+    "Composure__minus__LongShots": "diff",
+    "Composure__div__Penalties": "ratio",
+    "Composure__minus__Penalties": "diff",
+    "LWBRating__div__RWBRating": "ratio",
+    "LWBRating__minus__RWBRating": "diff",
+    "LWBRating__div__CBRating": "ratio",
+    "LWBRating__minus__CBRating": "diff",
+    "LWBRating__div__GKReflexes": "ratio",
+    "LWBRating__minus__GKReflexes": "diff",
+    "LWBRating__div__GKDiving": "ratio",
+    "LWBRating__minus__GKDiving": "diff",
+    "LWBRating__div__LongShots": "ratio",
+    "LWBRating__minus__LongShots": "diff",
+    "LWBRating__div__Penalties": "ratio",
+    "LWBRating__minus__Penalties": "diff",
+    "RWBRating__div__CBRating": "ratio",
+    "RWBRating__minus__CBRating": "diff",
+    "RWBRating__div__GKReflexes": "ratio",
+    "RWBRating__minus__GKReflexes": "diff",
+    "RWBRating__div__GKDiving": "ratio",
+    "RWBRating__minus__GKDiving": "diff",
+    "RWBRating__div__LongShots": "ratio",
+    "RWBRating__minus__LongShots": "diff",
+    "RWBRating__div__Penalties": "ratio",
+    "RWBRating__minus__Penalties": "diff",
+    "CBRating__div__GKReflexes": "ratio",
+    "CBRating__minus__GKReflexes": "diff",
+    "CBRating__div__GKDiving": "ratio",
+    "CBRating__minus__GKDiving": "diff",
+    "CBRating__div__LongShots": "ratio",
+    "CBRating__minus__LongShots": "diff",
+    "CBRating__div__Penalties": "ratio",
+    "CBRating__minus__Penalties": "diff",
+    "GKReflexes__div__GKDiving": "ratio",
+    "GKReflexes__minus__GKDiving": "diff",
+    "GKReflexes__div__LongShots": "ratio",
+    "GKReflexes__minus__LongShots": "diff",
+    "GKReflexes__div__Penalties": "ratio",
+    "GKReflexes__minus__Penalties": "diff",
+    "GKDiving__div__LongShots": "ratio",
+    "GKDiving__minus__LongShots": "diff",
+    "GKDiving__div__Penalties": "ratio",
+    "GKDiving__minus__Penalties": "diff",
+    "LongShots__div__Penalties": "ratio",
+    "LongShots__minus__Penalties": "diff",
+    "Position___CF__log1p": "log1p",
+    "Position___RW__log1p": "log1p",
+    "Position___LW__log1p": "log1p",
+    "Curve__div__CBRating__log1p": "log1p",
+    "GKDiving__div__LongShots__log1p": "log1p",
+    "GKReflexes__div__LongShots__log1p": "log1p",
+    "Position___RWB__log1p": "log1p",
+    "LWBRating__div__CBRating__log1p": "log1p",
+    "RWBRating__div__CBRating__log1p": "log1p",
+    "Position___LWB__log1p": "log1p",
+    "LWBRating__div__LongShots__log1p": "log1p",
+    "RWBRating__div__LongShots__log1p": "log1p",
+    "Height__div__LongShots__log1p": "log1p",
+    "Composure__div__LongShots__log1p": "log1p",
+    "GKReflexes__div__GKDiving__log1p": "log1p",
+    "Curve__div__GKDiving__log1p": "log1p",
+    "AttackingWorkRate___Low__log1p": "log1p",
+    "LWBRating__div__GKDiving__log1p": "log1p",
+    "RWBRating__div__GKDiving__log1p": "log1p",
+    "Height__div__CBRating__log1p": "log1p",
+    "Position___LB__log1p": "log1p",
+    "Position___CM__log1p": "log1p",
+    "Composure__div__CBRating__log1p": "log1p",
+    "Position___RB__log1p": "log1p",
+    "Position___CDM__log1p": "log1p",
+    "Position___LM__log1p": "log1p",
+    "Curve__div__GKReflexes__log1p": "log1p",
+    "Height__div__Curve__log1p": "log1p",
+    "DefensiveWorkRate___Low__log1p": "log1p",
+    "Composure__div__GKDiving__log1p": "log1p",
+    "Curve__div__LongShots__log1p": "log1p",
+    "LWBRating__div__GKReflexes__log1p": "log1p",
+    "RWBRating__div__GKReflexes__log1p": "log1p",
+    "Curve__div__Composure__log1p": "log1p",
+    "CBRating__div__GKDiving__log1p": "log1p",
+    "Position___RM__log1p": "log1p",
+    "DefensiveWorkRate___High__log1p": "log1p",
+    "CBRating__div__LongShots__log1p": "log1p",
+    "GKRating__log1p": "log1p",
+    "Position___GK__log1p": "log1p",
+    "GKPositioning__log1p": "log1p",
+    "GKReflexes__log1p": "log1p",
+    "GKDiving__log1p": "log1p",
+    "GKHandling__log1p": "log1p",
+    "GKKicking__log1p": "log1p",
+    "Composure__div__GKReflexes__log1p": "log1p",
+    "LWBRating__minus__GKReflexes__log1p": "log1p",
+    "RWBRating__minus__GKReflexes__log1p": "log1p",
+    "LWBRating__minus__GKDiving__log1p": "log1p",
+    "RWBRating__minus__GKDiving__log1p": "log1p",
+    "Height__div__GKReflexes__log1p": "log1p",
+    "Position___ST__log1p": "log1p",
+    "GKReflexes__minus__Penalties__log1p": "log1p",
+    "GKDiving__minus__Penalties__log1p": "log1p",
+    "Curve__minus__GKReflexes__log1p": "log1p",
+    "Curve__minus__GKDiving__log1p": "log1p",
+    "CBRating__minus__GKReflexes__log1p": "log1p",
+    "CBRating__minus__GKDiving__log1p": "log1p",
+    "GKReflexes__minus__LongShots__log1p": "log1p",
+    "DefensiveWorkRate___Medium__log1p": "log1p",
+    "GKDiving__minus__LongShots__log1p": "log1p",
+    "Composure__minus__GKReflexes__log1p": "log1p",
+    "Composure__minus__GKDiving__log1p": "log1p",
+    "CBRating__div__GKReflexes__log1p": "log1p",
+    "Position___CB__log1p": "log1p",
+    "Position___CAM__log1p": "log1p",
+    "Acceleration__log1p": "log1p",
+    "SprintSpeed__log1p": "log1p",
+    "BallControl__log1p": "log1p",
+    "AttackingWorkRate___High__log1p": "log1p",
+    "LMRating__log1p": "log1p",
+    "RMRating__log1p": "log1p",
+    "Dribbling__log1p": "log1p",
+    "PreferredFoot___Left__log1p": "log1p",
+    "PreferredFoot___Right__log1p": "log1p",
+    "LWRating__log1p": "log1p",
+    "RWRating__log1p": "log1p",
+    "Curve__div__Penalties__log1p": "log1p",
+    "GKDiving__div__Penalties__log1p": "log1p",
+    "LWBRating__log1p": "log1p",
+    "RWBRating__log1p": "log1p",
+    "ShortPassing__log1p": "log1p",
+    "LFRating__log1p": "log1p",
+    "CFRating__log1p": "log1p",
+    "RFRating__log1p": "log1p",
+    "CAMRating__log1p": "log1p",
+    "CMRating__log1p": "log1p",
+    "STRating__log1p": "log1p",
+    "LWBRating__div__Penalties__log1p": "log1p",
+    "RWBRating__div__Penalties__log1p": "log1p",
+    "AttackingWorkRate___Medium__log1p": "log1p",
+    "LBRating__log1p": "log1p",
+    "RBRating__log1p": "log1p",
+    "Stamina__log1p": "log1p",
+    "Height__div__Penalties__log1p": "log1p",
+    "Positioning__log1p": "log1p",
+    "Curve__div__LWBRating__log1p": "log1p",
+    "Curve__div__RWBRating__log1p": "log1p",
+    "HeadingAccuracy__log1p": "log1p",
+    "GKReflexes__div__Penalties__log1p": "log1p",
+    "Height__minus__LWBRating__log1p": "log1p",
+    "Height__minus__RWBRating__log1p": "log1p",
+    "Height__minus__CBRating__log1p": "log1p",
+    "Balance__log1p": "log1p",
+    "CDMRating__log1p": "log1p",
+    "LongShots__div__Penalties__log1p": "log1p",
+    "Agility__log1p": "log1p",
+    "Age__log1p": "log1p",
+    "Penalties__log1p": "log1p",
+    "Crossing__log1p": "log1p"
+  },
+  "n_created": 200
+}</pre>
+</section>
+<section><h2>3. 베이스라인 결과</h2>
+<table border="1" class="dataframe table table-striped">
+  <thead>
+    <tr style="text-align: right;">
+      <th>model</th>
+      <th>task</th>
+      <th>mean_accuracy</th>
+      <th>std_accuracy</th>
+      <th>mean_f1_macro</th>
+      <th>std_f1_macro</th>
+      <th>mean_roc_auc</th>
+      <th>std_roc_auc</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LogisticRegression</td>
+      <td>classification</td>
+      <td>0.7901</td>
+      <td>0.0168</td>
+      <td>0.7656</td>
+      <td>0.0209</td>
+      <td>0.8485</td>
+      <td>0.0152</td>
+    </tr>
+    <tr>
+      <td>RandomForest</td>
+      <td>classification</td>
+      <td>0.7810</td>
+      <td>0.0141</td>
+      <td>0.7536</td>
+      <td>0.0214</td>
+      <td>0.8333</td>
+      <td>0.0111</td>
+    </tr>
+    <tr>
+      <td>GradientBoosting</td>
+      <td>classification</td>
+      <td>0.7768</td>
+      <td>0.0142</td>
+      <td>0.7505</td>
+      <td>0.0207</td>
+      <td>0.8450</td>
+      <td>0.0135</td>
+    </tr>
+    <tr>
+      <td>SVC</td>
+      <td>classification</td>
+      <td>0.7292</td>
+      <td>0.0088</td>
+      <td>0.6474</td>
+      <td>0.0174</td>
+      <td>0.8179</td>
+      <td>0.0139</td>
+    </tr>
+  </tbody>
+</table>
+<p>추천 모델: <strong>LogisticRegression</strong></p>
+<p>훈련된 베이스라인 수: 4</p>
+</section>
+<section><h2>4. HPO 결과</h2>
+<h3>best_params</h3>
+<pre>{
+  "C": 0.354699901428537,
+  "penalty": "l2"
+}</pre>
+<p>best_value: 0.7921325051759834</p>
+<h4>Study summary</h4>
+<pre>{
+  "n_trials": 93,
+  "best_trial": {
+    "number": 73,
+    "value": 0.7921325051759834,
+    "params": {
+      "C": 0.354699901428537,
+      "penalty": "l2"
+    }
+  },
+  "trials": [
+    {
+      "number": 0,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7850931677018633,
+      "params": {
+        "C": 0.014789362180537086,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 1,
+      "state": "TrialState.COMPLETE",
+      "value": 0.786335403726708,
+      "params": {
+        "C": 45.91206871887532,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 2,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.09073134957639821,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 3,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.5483729221735226,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 4,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7863354037267082,
+      "params": {
+        "C": 0.03705419388018777,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 5,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7863354037267082,
+      "params": {
+        "C": 0.028475624413823092,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 6,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511388,
+      "params": {
+        "C": 0.46747679177679646,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 7,
+      "state": "TrialState.COMPLETE",
+      "value": 0.787991718426501,
+      "params": {
+        "C": 2.3168281808969096,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 8,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7871635610766047,
+      "params": {
+        "C": 0.04142324924243859,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 9,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7900621118012423,
+      "params": {
+        "C": 1.5804245300278283,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 10,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7577639751552795,
+      "params": {
+        "C": 0.002220884280135299,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 11,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7859213250517598,
+      "params": {
+        "C": 13.418364985396822,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 12,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7913043478260869,
+      "params": {
+        "C": 0.21743957948450232,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 13,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7917184265010353,
+      "params": {
+        "C": 0.24129788904507085,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 14,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7714285714285714,
+      "params": {
+        "C": 0.0035417397315527363,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 15,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511388,
+      "params": {
+        "C": 0.16146405892190754,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 16,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7867494824016563,
+      "params": {
+        "C": 4.935705623102425,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 17,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 0.5589088108887101,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 18,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7838509316770187,
+      "params": {
+        "C": 0.008287938923599221,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 19,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.15562160757648885,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 20,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7838509316770187,
+      "params": {
+        "C": 82.87317596959076,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 21,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.5069849542632077,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 22,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7888198757763975,
+      "params": {
+        "C": 1.4902758837986585,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 23,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7917184265010352,
+      "params": {
+        "C": 0.18945560063864214,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 24,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511388,
+      "params": {
+        "C": 0.09520289800306247,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 25,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7913043478260869,
+      "params": {
+        "C": 0.21785573169816802,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 26,
+      "state": "TrialState.COMPLETE",
+      "value": 0.787991718426501,
+      "params": {
+        "C": 4.651412825022737,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 27,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7888198757763975,
+      "params": {
+        "C": 0.05701515428640515,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 28,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7842650103519668,
+      "params": {
+        "C": 0.00898023239930152,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 29,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7850931677018633,
+      "params": {
+        "C": 0.018105590846000247,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 30,
+      "state": "TrialState.COMPLETE",
+      "value": 0.722567287784679,
+      "params": {
+        "C": 0.0010973055598995057,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 31,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511388,
+      "params": {
+        "C": 0.22833105364958567,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 32,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 1.0206271257013042,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 33,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511388,
+      "params": {
+        "C": 0.1002169159984454,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 34,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 0.17171042693648897,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 35,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511388,
+      "params": {
+        "C": 0.43007688972327546,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 36,
+      "state": "TrialState.COMPLETE",
+      "value": 0.789648033126294,
+      "params": {
+        "C": 0.06389005022095542,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 37,
+      "state": "TrialState.COMPLETE",
+      "value": 0.789648033126294,
+      "params": {
+        "C": 0.24227007389434155,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 38,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7900621118012423,
+      "params": {
+        "C": 0.9731632279584543,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 39,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7867494824016563,
+      "params": {
+        "C": 2.833122302013121,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 40,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7850931677018633,
+      "params": {
+        "C": 19.2244921151143,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 41,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7917184265010352,
+      "params": {
+        "C": 0.34980829133286845,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 42,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7871635610766047,
+      "params": {
+        "C": 0.027470274205393122,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 43,
+      "state": "TrialState.COMPLETE",
+      "value": 0.789648033126294,
+      "params": {
+        "C": 0.7221582949455647,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 44,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 0.3027947943291641,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 45,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.11903426525114078,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 46,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511388,
+      "params": {
+        "C": 0.353805012877134,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 47,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7879917184265012,
+      "params": {
+        "C": 0.05305116925128568,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 48,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7900621118012423,
+      "params": {
+        "C": 0.25393240180297705,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 49,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7855072463768117,
+      "params": {
+        "C": 0.023946138963220752,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 50,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 0.9082701174128166,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 51,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7900621118012423,
+      "params": {
+        "C": 0.4359932807162316,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 52,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 1.402956156437805,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 53,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 0.1863242593644998,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 54,
+      "state": "TrialState.COMPLETE",
+      "value": 0.789648033126294,
+      "params": {
+        "C": 0.07091234191805251,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 55,
+      "state": "TrialState.COMPLETE",
+      "value": 0.787991718426501,
+      "params": {
+        "C": 2.4632269139218397,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 56,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.14071083794628386,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 57,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.5709992468390941,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 58,
+      "state": "TrialState.COMPLETE",
+      "value": 0.787991718426501,
+      "params": {
+        "C": 0.045400755592602204,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 59,
+      "state": "TrialState.COMPLETE",
+      "value": 0.789648033126294,
+      "params": {
+        "C": 0.08304434425769416,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 60,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7900621118012423,
+      "params": {
+        "C": 0.6797697805662135,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 61,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.3561185298965235,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 62,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7913043478260869,
+      "params": {
+        "C": 0.1381322690396709,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 63,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7913043478260869,
+      "params": {
+        "C": 0.13563318924285778,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 64,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 0.12235264466066159,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 65,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 0.19254392220953614,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 66,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7900621118012422,
+      "params": {
+        "C": 0.27289822517546486,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 67,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.08890436947402945,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 68,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7863354037267082,
+      "params": {
+        "C": 0.03789436349391557,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 69,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7913043478260869,
+      "params": {
+        "C": 0.1343386848639274,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 70,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7838509316770187,
+      "params": {
+        "C": 0.009880329642826247,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 71,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 0.12088424992954894,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 72,
+      "state": "TrialState.COMPLETE",
+      "value": 0.789648033126294,
+      "params": {
+        "C": 0.18035056614939352,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 73,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7921325051759834,
+      "params": {
+        "C": 0.354699901428537,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 74,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7913043478260869,
+      "params": {
+        "C": 0.3699188694742275,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 75,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511388,
+      "params": {
+        "C": 0.26413361140089225,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 76,
+      "state": "TrialState.COMPLETE",
+      "value": 0.789648033126294,
+      "params": {
+        "C": 0.5288296214306942,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 77,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.7770400369838814,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 78,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.21702703849730476,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 79,
+      "state": "TrialState.COMPLETE",
+      "value": 0.789648033126294,
+      "params": {
+        "C": 1.1605770565039246,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 80,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.09144546899335,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 81,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7900621118012422,
+      "params": {
+        "C": 0.13804805301192596,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 82,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7913043478260869,
+      "params": {
+        "C": 0.2904299998648422,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 83,
+      "state": "TrialState.COMPLETE",
+      "value": 0.789648033126294,
+      "params": {
+        "C": 0.06443591501580441,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 84,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7892339544513458,
+      "params": {
+        "C": 0.1604653691630558,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 85,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 0.47489427822961966,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 86,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511388,
+      "params": {
+        "C": 0.10164498508613419,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 87,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7904761904761904,
+      "params": {
+        "C": 0.36174545126476737,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 88,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7908902691511387,
+      "params": {
+        "C": 0.20279731931495404,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 89,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7875776397515528,
+      "params": {
+        "C": 0.04698091652181956,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 90,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7892339544513458,
+      "params": {
+        "C": 0.5896195156414037,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 91,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7900621118012423,
+      "params": {
+        "C": 0.37532645767523354,
+        "penalty": "l2"
+      }
+    },
+    {
+      "number": 92,
+      "state": "TrialState.COMPLETE",
+      "value": 0.7913043478260869,
+      "params": {
+        "C": 0.30057447597278986,
+        "penalty": "l2"
+      }
+    }
+  ]
+}</pre>
+</section>
+<section><h2>5. 검증 결과</h2>
+<p class='meta'>Validation 결과 없음</p>
+</section>
+<section><h2>6. Artifacts</h2>
+<p>경로: artifacts</p><ul>
+<li>hpo_best_params.json</li>
+<li>final_20251205T081341Z\best_model.pkl</li>
+<li>final_20251205T081341Z\params.json</li>
+<li>final_20251205T081341Z\preprocessor.joblib</li>
+<li>final_20251205T082013Z\best_model.pkl</li>
+<li>final_20251205T082013Z\params.json</li>
+<li>final_20251205T082013Z\preprocessor.joblib</li>
+<li>report_preproc_20251205T081733Z_20251205T081733Z\preprocessor.joblib</li>
+</ul>
+</section>
+</body></html>

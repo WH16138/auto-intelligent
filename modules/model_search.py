@@ -27,7 +27,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def detect_task_type(df: pd.DataFrame, target_col: Optional[str] = None) -> str:
+def detect_task_type(df: pd.DataFrame, target_col: Optional[str] = None, forced_task: Optional[str] = None) -> str:
     """
     간단한 문제 유형 감지.
     - classification: 타깃이 범주형이거나(정수/문자 중 고유값이 적음) 고유값 수가 적은 숫자형
@@ -36,6 +36,8 @@ def detect_task_type(df: pd.DataFrame, target_col: Optional[str] = None) -> str:
 
     반환값: 'classification' | 'regression' | 'unknown'
     """
+    if forced_task in {"classification", "regression"}:
+        return forced_task
     if target_col is None or target_col not in df.columns:
         return "unknown"
     s = df[target_col]
@@ -51,7 +53,7 @@ def detect_task_type(df: pd.DataFrame, target_col: Optional[str] = None) -> str:
         return "classification"
 
 
-def get_X_y(df: pd.DataFrame, target_col: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray, str, List[str]]:
+def get_X_y(df: pd.DataFrame, target_col: Optional[str] = None, forced_task: Optional[str] = None) -> Tuple[np.ndarray, np.ndarray, str, List[str]]:
     """
     DataFrame으로부터 X (numpy), y (numpy), task_type, feature_names 반환.
     기본적으로 숫자형 컬럼만 사용함(전처리·인코딩이 있으면 더 좋은 결과).
@@ -85,7 +87,7 @@ def get_X_y(df: pd.DataFrame, target_col: Optional[str] = None) -> Tuple[np.ndar
 
     X = df[features].fillna(0).values
     y = df[target_col].values
-    task = detect_task_type(df, target_col)
+    task = detect_task_type(df, target_col, forced_task=forced_task)
     return X, y, task, features
 
 
@@ -106,6 +108,7 @@ def quick_baselines(
     target_col: Optional[str] = None,
     cv: int = 3,
     random_state: int = 0,
+    forced_task: Optional[str] = None,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
     빠른 베이스라인 모델 비교.
@@ -116,7 +119,7 @@ def quick_baselines(
       results_df: pandas.DataFrame (model, mean_score, std_score, task, notes)
       trained_models: dict 모델명->fit된 estimator (fit on full data)
     """
-    X, y, task, feature_names = get_X_y(df, target_col=target_col)
+    X, y, task, feature_names = get_X_y(df, target_col=target_col, forced_task=forced_task)
 
     results = []
     models = {}
@@ -162,10 +165,10 @@ def quick_baselines(
             # fit on full data for return (best-effort)
             try:
                 clf.fit(X, y)
-                models[name] = {"model": clf, "feature_names": feature_names}
+                models[name] = {"model": clf, "feature_names": feature_names, "task": task}
             except Exception as e:
                 logger.warning("모델 학습 실패(%s): %s", name, e)
-                models[name] = {"model": None, "feature_names": feature_names, "error": str(e)}
+                models[name] = {"model": None, "feature_names": feature_names, "error": str(e), "task": task}
             results.append(row)
 
     elif task == "regression":
@@ -184,10 +187,10 @@ def quick_baselines(
             # fit on full data
             try:
                 reg.fit(X, y)
-                models[name] = {"model": reg, "feature_names": feature_names}
+                models[name] = {"model": reg, "feature_names": feature_names, "task": task}
             except Exception as e:
                 logger.warning("모델 학습 실패(%s): %s", name, e)
-                models[name] = {"model": None, "feature_names": feature_names, "error": str(e)}
+                models[name] = {"model": None, "feature_names": feature_names, "error": str(e), "task": task}
             results.append(row)
 
     else:

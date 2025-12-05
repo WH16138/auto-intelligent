@@ -116,8 +116,13 @@ def build_preprocessor(
     # categorical pipelines
     cat_pipelines = []
     if onehot_cols:
+        # handle sklearn 1.2+ (sparse_output) vs older (sparse)
+        try:
+            onehot_encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+        except TypeError:
+            onehot_encoder = OneHotEncoder(handle_unknown="ignore", sparse=False)
         cat_pipelines.append(
-            ("onehot", Pipeline([("imputer", SimpleImputer(strategy=categorical_imputer, fill_value="__missing__")), ("onehot", OneHotEncoder(handle_unknown="ignore", sparse=False))]), onehot_cols)
+            ("onehot", Pipeline([("imputer", SimpleImputer(strategy=categorical_imputer, fill_value="__missing__")), ("onehot", onehot_encoder)]), onehot_cols)
         )
     if ordinal_cols:
         cat_pipelines.append(

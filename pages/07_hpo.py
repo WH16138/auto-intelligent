@@ -1,34 +1,46 @@
+# -*- coding: utf-8 -*-
 # pages/07_hpo.py
 """
-Step 7 - Hyperparameter Tuning (Optuna)
+7단계 - Hyperparameter Tuning (Optuna)
 
-Notes:
-- Explicitly excludes the target column from feature inputs.
-- Chooses dataset deterministically (preprocessed vs raw) to avoid DataFrame truthiness errors.
-- Drops rows with missing target before HPO.
+- 특징공학 반영본(df_features)만 사용
+- 모델 셀렉션 결과(베이스라인)에서 선택하거나 지원 모델 목록 중 선택
+- modules/hpo.py가 지원하는 모델: RandomForestClassifier/Regressor, GradientBoostingClassifier/Regressor, SVC, LogisticRegression
 """
-import time
-from typing import Optional, Tuple
-
-import numpy as np
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import numpy as np
+from typing import Optional
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, GradientBoostingClassifier, GradientBoostingRegressor
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
 
 st.set_page_config(layout="wide")
 st.title("7 - Hyperparameter Tuning (HPO)")
 
 # Session defaults
-st.session_state.setdefault("df", None)
-st.session_state.setdefault("df_preprocessed", None)
-st.session_state.setdefault("target_col", None)
-st.session_state.setdefault("baseline_models", None)
-st.session_state.setdefault("hpo_result", None)
+for key in [
+    "df_original",
+    "df_dropped",
+    "df_preprocessed",
+    "df_features",
+    "df_features_train",
+    "df_features_test",
+    "df",
+    "target_col",
+    "baseline_models",
+    "best_model_name",
+    "hpo_result",
+]:
+    st.session_state.setdefault(key, None)
 
-# Imports (fallbacks)
+# Imports
 try:
     from modules import hpo as hpo_mod
+    HPO_MODELS = getattr(hpo_mod, "MODEL_CHOICES", ["RandomForestClassifier"])
 except Exception:
     hpo_mod = None
+    HPO_MODELS = ["RandomForestClassifier"]
 
 try:
     from modules import model_search as ms
@@ -41,94 +53,98 @@ except Exception:
     import modules.io_utils as io_utils  # type: ignore
 
 
-def get_df(prefer_preprocessed: bool = True) -> Tuple[Optional[pd.DataFrame], bool]:
-    """Return dataframe and flag indicating if preprocessed was used."""
-    df_feat = st.session_state.get("df_features")
-    if prefer_preprocessed and df_feat is not None:
-        return df_feat, True
-    df_pre = st.session_state.get("df_preprocessed")
-    if prefer_preprocessed and df_pre is not None:
-        return df_pre, True
-    df_raw = st.session_state.get("df")
-    if df_raw is not None:
-        return df_raw, False
-    if df_feat is not None:
-        return df_feat, True
-    if df_pre is not None:
-        return df_pre, True
-    return None, False
+def get_df() -> Optional[pd.DataFrame]:
+    # HPO는 특징공학 반영본을 사용
+    return st.session_state.get("df_features")
 
 
-# Choose data
-df_pre, _ = get_df(prefer_preprocessed=True)
-df_raw, _ = get_df(prefer_preprocessed=False)
-if df_pre is None and df_raw is None:
-    st.warning("Upload / Preprocessing 페이지에서 데이터를 준비한 후 다시 시도하세요.")
+df = get_df()
+problem_type_override = st.session_state.get("problem_type")
+if df is None:
+    st.error("특징공학 결과(df_features)가 없습니다. 05단계에서 확정 후 진행하세요.")
     st.stop()
-
-data_choice = st.radio(
-    "HPO에 사용할 데이터",
-    options=[
-        "특징공학/전처리 반영 데이터(df_features/df_preprocessed)",
-        "원본 데이터(df)",
-    ],
-    index=0 if df_pre is not None else 1,
-)
-if data_choice.startswith("특징공학") and df_pre is not None:
-    df = df_pre
+train_idx = st.session_state.get("train_idx")
+if isinstance(train_idx, list) and len(train_idx) > 0:
+    df_train = df.iloc[train_idx].copy()
 else:
-    df = df_raw
+    df_train = df
 
-# Target selection
+st.write(f"사용 데이터(훈련용): {df_train.shape[0]} 행 × {df_train.shape[1]} 열")
+if isinstance(train_idx, list) and len(train_idx) > 0:
+    st.caption(f"train 인덱스 {len(train_idx)}개 사용 (전체 {df.shape[0]} 중)")
+
+# Target
 target_session = st.session_state.get("target_col")
 columns_list = df.columns.tolist()
 target_override = st.selectbox(
-    "타깃 컬럼 선택",
+    "타깃 컬럼",
     options=["(세션 값 사용)"] + columns_list,
-    index=0 if target_session is None else columns_list.index(target_session) + 1 if target_session in columns_list else 0,
+    index=0 if target_session is None else (columns_list.index(target_session) + 1 if target_session in columns_list else 0),
 )
 target_col = target_session if target_override == "(세션 값 사용)" else target_override
 if target_col is None or target_col not in df.columns:
-    st.error("타깃 컬럼을 선택하세요. Overview에서 설정했거나 여기서 선택할 수 있습니다.")
+    st.error("타깃 컬럼을 선택하세요. Overview에서 지정했거나 여기서 선택할 수 있습니다.")
     st.stop()
 
 # Diagnostics
-target_ser = df[target_col]
+target_ser = df_train[target_col]
 target_nulls = int(target_ser.isnull().sum())
 unique_vals = target_ser.dropna().nunique()
-numeric_features = [c for c in df.select_dtypes(include=["number"]).columns if c != target_col]
+numeric_features = [c for c in df_train.select_dtypes(include=["number"]).columns if c != target_col]
 st.markdown(
-    f"- 타깃 고유값: **{unique_vals}** | 결측치: **{target_nulls}**\n"
-    f"- 사용 가능한 수치형 특징 수: **{len(numeric_features)}**"
+    f"- 타깃 고유값: **{unique_vals}** | 타깃 결측: **{target_nulls}** | 수치형 특징 수: **{len(numeric_features)}**"
 )
-if target_nulls > 0:
-    st.warning("타깃 결측이 있습니다. 결측 행을 제거하고 HPO를 진행합니다.")
 if unique_vals <= 1:
     st.error("타깃이 단일 값입니다. 최소 2개 이상의 클래스/값이 필요합니다.")
     st.stop()
 if len(numeric_features) == 0:
-    st.error("사용 가능한 수치형 특징이 없습니다. 전처리/인코딩 단계를 확인하세요.")
+    st.error("사용 가능한 수치형 특징이 없습니다.")
     st.stop()
+if target_nulls > 0:
+    st.warning("타깃 결측 행을 제거하고 진행합니다.")
 
-# Drop rows with missing target
-df_hpo = df.dropna(subset=[target_col]).copy()
+# Clean data
+if problem_type_override:
+    st.info(f"문제 유형 설정: {problem_type_override} (Overview에서 지정)")
+df_hpo = df_train.dropna(subset=[target_col]).copy()
 if df_hpo.empty:
     st.error("타깃 결측 제거 후 데이터가 비어 있습니다.")
     st.stop()
 
-st.write(f"HPO 데이터셋 크기: {df_hpo.shape[0]} 행 × {df_hpo.shape[1]} 열")
-st.write(f"타깃 컬럼: `{target_col}`")
-
 # HPO availability
 if hpo_mod is None:
-    st.error("modules.hpo가 로드되지 않았습니다. requirements.txt의 optuna가 설치되어 있는지 확인하세요.")
+    st.error("modules.hpo를 불러오지 못했습니다. optuna 설치를 확인하세요.")
     st.stop()
 
-# Controls
+# 모델 후보
+baseline_models = st.session_state.get("baseline_models") or {}
+best_baseline = st.session_state.get("best_model_name")
+baseline_names = list(baseline_models.keys())
+
+def _choose_default_model_name() -> str:
+    if best_baseline and best_baseline in HPO_MODELS:
+        return best_baseline
+    for name in baseline_names:
+        if name in HPO_MODELS:
+            return name
+    return HPO_MODELS[0]
+
 st.subheader("HPO 설정")
-col1, col2, col3 = st.columns([1, 1, 1])
+col1, col2, col3 = st.columns([1.4, 1, 1])
 with col1:
-    model_to_tune = st.selectbox("튜닝할 모델", options=["RandomForest"], index=0)
+    options_model = []
+    default_model = _choose_default_model_name()
+    for name in baseline_names:
+        if name in HPO_MODELS and name not in options_model:
+            options_model.append(name)
+    for name in HPO_MODELS:
+        if name not in options_model:
+            options_model.append(name)
+    try:
+        default_index = options_model.index(default_model)
+    except Exception:
+        default_index = 0
+    model_option = st.selectbox("튜닝할 모델", options=options_model, index=default_index)
 with col2:
     time_budget = st.number_input("시간 제한 (초, 0=기본 60초)", min_value=0, value=60, step=10)
     n_jobs = st.number_input("교차검증 n_jobs", min_value=1, value=1, step=1)
@@ -136,28 +152,107 @@ with col3:
     cv = st.number_input("CV 분할 수", min_value=2, max_value=10, value=3, step=1)
     random_state = st.number_input("random_state", min_value=0, value=0, step=1)
 
+# Early stopping & search controls
+col_e1, col_e2, col_e3 = st.columns(3)
+with col_e1:
+    n_trials = st.number_input("n_trials (0=시간 기반)", min_value=0, value=0, step=10)
+with col_e2:
+    patience = st.number_input("조기중단 patience(연속 미개선 trial 수)", min_value=0, value=0, step=1)
+with col_e3:
+    tolerance = st.number_input("개선 허용 오차(tolerance)", min_value=0.0, value=0.0, step=0.001, format="%.3f")
+if patience > 0:
+    st.caption(f"연속 {int(patience)}회 개선 없으면 탐색 중단 (최소 trial 확보 후). tolerance={tolerance:.3f}")
+
+# Run HPO
 st.markdown("---")
 st.subheader("HPO 실행")
+
+# 실시간 진행 모니터 영역
+progress_bar = st.progress(0, text="HPO 대기 중...")
+history_chart = st.empty()
+metric_placeholder = st.empty()
+trial_values = []
+
 if st.button("HPO 실행"):
     try:
-        with st.spinner("HPO 실행 중..."):
-            X, y, task, feature_names = ms.get_X_y(df_hpo, target_col=target_col)
-            tb = int(time_budget) if time_budget and time_budget > 0 else 60
-            hpo_result = hpo_mod.run_hpo(
-                model_name=model_to_tune,
-                X=X,
-                y=y,
-                time_budget=tb,
-                cv=int(cv),
-                random_state=int(random_state),
-                n_jobs=int(n_jobs),
-            )
-            st.session_state["hpo_result"] = hpo_result
-            st.session_state["target_col"] = target_col  # persist
-            st.success("HPO가 완료되었습니다.")
+        import time
+
+        X, y, task, feature_names = ms.get_X_y(df_hpo, target_col=target_col, forced_task=problem_type_override)
+        tb = int(time_budget) if time_budget and time_budget > 0 else 60
+        total_budget = tb if tb > 0 else 60
+
+        def _on_trial(study, trial):
+            val = trial.value
+            if val is not None:
+                trial_values.append(val)
+                history_chart.line_chart(
+                    pd.DataFrame(trial_values, columns=["score"]),
+                    height=200,
+                )
+            elapsed = time.time() - start_ts
+            ratio = min(1.0, elapsed / max(1, total_budget))
+            best_val = study.best_value if study.best_value is not None else "N/A"
+            val_fmt = f"{val:.4f}" if val is not None else "N/A"
+            progress_bar.progress(ratio, text=f"진행 중... trial {trial.number} | best={best_val}")
+            metric_placeholder.markdown(f"**Trial {trial.number} 완료** | 값: {val_fmt} | 경과: {elapsed:.1f}s")
+
+        start_ts = time.time()
+        hpo_result = hpo_mod.run_hpo(
+            model_name=model_option,
+            X=X,
+            y=y,
+            time_budget=tb,
+            n_trials=int(n_trials) if n_trials and n_trials > 0 else None,
+            cv=int(cv),
+            random_state=int(random_state),
+            n_jobs=int(n_jobs),
+            task_override=problem_type_override,
+            callbacks=[_on_trial],
+            patience=int(patience) if patience and patience > 0 else None,
+            tolerance=float(tolerance),
+        )
+        st.session_state["hpo_result"] = hpo_result
+        st.session_state["hpo_model_name"] = model_option
+        st.session_state["target_col"] = target_col
+        progress_bar.progress(1.0, text="HPO 완료")
+        st.success("HPO가 완료되었습니다.")
+
+        # Train model on full train set with best_params and save to session
+        best_params = hpo_result.get("best_params") if isinstance(hpo_result, dict) else None
+        if best_params:
+            try:
+                if model_option == "RandomForestClassifier":
+                    model = RandomForestClassifier(random_state=int(random_state), **best_params)
+                elif model_option == "RandomForestRegressor":
+                    model = RandomForestRegressor(random_state=int(random_state), **best_params)
+                elif model_option == "GradientBoostingClassifier":
+                    model = GradientBoostingClassifier(random_state=int(random_state), **best_params)
+                elif model_option == "GradientBoostingRegressor":
+                    model = GradientBoostingRegressor(random_state=int(random_state), **best_params)
+                elif model_option == "SVC":
+                    params = {**best_params}
+                    params.setdefault("probability", True)
+                    params.setdefault("random_state", int(random_state))
+                    model = SVC(**params)
+                elif model_option == "LogisticRegression":
+                    params = {**best_params}
+                    params.setdefault("max_iter", 500)
+                    params.setdefault("random_state", int(random_state))
+                    model = LogisticRegression(**params)
+                else:
+                    model = None
+                if model is not None:
+                    model.fit(X, y)
+                    st.session_state["trained_model"] = model
+                    st.session_state["feature_names"] = feature_names
+                    st.session_state["problem_type"] = task
+                    st.success("HPO 최적 파라미터로 모델을 학습하여 세션에 저장했습니다.")
+            except Exception as e:
+                st.warning(f"HPO 모델 학습/저장 실패: {e}")
     except Exception as e:
         st.error(f"HPO 실행 실패: {e}")
 
+# Results
 st.markdown("---")
 st.subheader("HPO 결과")
 hpo_res = st.session_state.get("hpo_result")
@@ -218,4 +313,4 @@ else:
             st.error(f"스크립트 생성 실패: {e}")
 
 st.markdown("---")
-st.write("다음 단계: Validation 페이지에서 검증을 진행하세요.")
+st.info("다음 단계: Validation 페이지에서 모델 검증을 진행하세요.")

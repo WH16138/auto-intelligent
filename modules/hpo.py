@@ -1,18 +1,19 @@
+# -*- coding: utf-8 -*-
 """
 modules/hpo.py
 
-Optuna 기반 하이퍼파라미터 튜닝 유틸.
+Optuna 기반 하이퍼파라미터 최적화 래퍼.
+지원 모델 (model_name):
+  - RandomForestClassifier
+  - RandomForestRegressor
+  - GradientBoostingClassifier
+  - GradientBoostingRegressor
+  - SVC (RBF)
+  - LogisticRegression
 
-주요 함수
-- run_hpo(model_name, X, y, time_budget, cv=3, direction=None)
-    : model_name (str)에 따라 탐색 공간을 구성하고 Optuna로 최적화 수행.
-      반환: dict { 'best_params', 'best_value', 'study_summary', 'trials' }
-
-- run_optuna_sample(df, time_budget)
-    : (하위 호환) DataFrame을 받아 내부에서 X,y를 추출(타깃 컬럼 'target' 우선)하여 간단히 RandomForest 튜닝 수행.
-      반환 형식은 run_hpo와 동일.
-
-설치: optuna가 requirements.txt에 포함되어 있어야 합니다.
+기본 scoring:
+  - classification: accuracy
+  - regression: r2
 """
 from typing import Any, Dict, Optional, Tuple
 import time
@@ -26,22 +27,28 @@ try:
     import optuna
     from optuna.pruners import MedianPruner
 except Exception as e:
-    raise ImportError("optuna가 설치되어 있어야 합니다. requirements.txt를 확인하세요.") from e
+    raise ImportError("optuna가 설치되어 있지 않습니다. requirements.txt를 확인하세요.") from e
 
 try:
-    import sklearn
     from sklearn.model_selection import cross_val_score, StratifiedKFold, KFold
-    from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+    from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, GradientBoostingClassifier, GradientBoostingRegressor
     from sklearn.svm import SVC
-    from sklearn.metrics import accuracy_score, f1_score, make_scorer
+    from sklearn.linear_model import LogisticRegression
 except Exception as e:
-    raise ImportError("scikit-learn이 설치되어 있어야 합니다.") from e
+    raise ImportError("scikit-learn 의존성이 누락되었습니다.") from e
 
-# ---------------------------------------
-# Helpers
-# ---------------------------------------
+
+MODEL_CHOICES = [
+    "RandomForestClassifier",
+    "RandomForestRegressor",
+    "GradientBoostingClassifier",
+    "GradientBoostingRegressor",
+    "SVC",
+    "LogisticRegression",
+]
+
+
 def _task_from_y(y: np.ndarray) -> str:
-    """간단한 y 기반 문제 유형 추정"""
     try:
         if np.issubdtype(y.dtype, np.number):
             nuniq = len(np.unique(y[~np.isnan(y)]))
@@ -55,33 +62,100 @@ def _task_from_y(y: np.ndarray) -> str:
         return "unknown"
 
 
-def _default_search_space(trial: optuna.trial.Trial):
-    """
-    RandomForest를 위한 기본 탐색 공간(공용).
-    확장하고 싶으면 edit 하세요.
-    """
-    n_estimators = trial.suggest_int("n_estimators", 50, 300)
-    max_depth = trial.suggest_int("max_depth", 3, 30)
-    max_features = trial.suggest_categorical("max_features", ["sqrt", "log2", 0.3, 0.5, None])
-    min_samples_split = trial.suggest_int("min_samples_split", 2, 10)
-    return {
-        "n_estimators": n_estimators,
-        "max_depth": max_depth,
-        "max_features": max_features,
-        "min_samples_split": min_samples_split,
+def _space_rf_classifier(trial: optuna.trial.Trial, random_state: int):
+    params = {
+        "n_estimators": trial.suggest_int("n_estimators", 50, 300),
+        "max_depth": trial.suggest_int("max_depth", 3, 30),
+        "max_features": trial.suggest_categorical("max_features", ["sqrt", "log2", 0.3, 0.5, None]),
+        "min_samples_split": trial.suggest_int("min_samples_split", 2, 10),
+        "random_state": random_state,
     }
+    return RandomForestClassifier(**params)
+
+
+def _space_rf_regressor(trial: optuna.trial.Trial, random_state: int):
+    params = {
+        "n_estimators": trial.suggest_int("n_estimators", 50, 300),
+        "max_depth": trial.suggest_int("max_depth", 3, 30),
+        "max_features": trial.suggest_categorical("max_features", ["sqrt", "log2", 0.3, 0.5, None]),
+        "min_samples_split": trial.suggest_int("min_samples_split", 2, 10),
+        "random_state": random_state,
+    }
+    return RandomForestRegressor(**params)
+
+
+def _space_gb_classifier(trial: optuna.trial.Trial, random_state: int):
+    params = {
+        "n_estimators": trial.suggest_int("n_estimators", 50, 300),
+        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+        "max_depth": trial.suggest_int("max_depth", 2, 8),
+        "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+        "random_state": random_state,
+    }
+    return GradientBoostingClassifier(**params)
+
+
+def _space_gb_regressor(trial: optuna.trial.Trial, random_state: int):
+    params = {
+        "n_estimators": trial.suggest_int("n_estimators", 50, 300),
+        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.3, log=True),
+        "max_depth": trial.suggest_int("max_depth", 2, 8),
+        "subsample": trial.suggest_float("subsample", 0.6, 1.0),
+        "random_state": random_state,
+    }
+    return GradientBoostingRegressor(**params)
+
+
+def _space_svc(trial: optuna.trial.Trial, random_state: int):
+    params = {
+        "C": trial.suggest_float("C", 1e-3, 1e3, log=True),
+        "gamma": trial.suggest_float("gamma", 1e-4, 1e0, log=True),
+        "kernel": "rbf",
+        "probability": True,
+        "random_state": random_state,
+    }
+    return SVC(**params)
+
+
+def _space_logreg(trial: optuna.trial.Trial, random_state: int):
+    params = {
+        "C": trial.suggest_float("C", 1e-3, 1e2, log=True),
+        "penalty": trial.suggest_categorical("penalty", ["l2"]),
+        "solver": "lbfgs",
+        "max_iter": 500,
+        "random_state": random_state,
+    }
+    return LogisticRegression(**params)
+
+
+MODEL_BUILDERS = {
+    "RandomForestClassifier": _space_rf_classifier,
+    "RandomForestRegressor": _space_rf_regressor,
+    "GradientBoostingClassifier": _space_gb_classifier,
+    "GradientBoostingRegressor": _space_gb_regressor,
+    "SVC": _space_svc,
+    "LogisticRegression": _space_logreg,
+}
 
 
 def _study_summary(study: optuna.study.Study) -> Dict[str, Any]:
-    """간단한 study summary를 생성"""
     trials = []
     for t in study.trials:
-        trials.append({
-            "number": t.number,
-            "state": str(t.state),
-            "value": None if t.value is None else float(t.value),
-            "params": {k: (None if v is None else (int(v) if isinstance(v, (int, np.integer)) else float(v) if isinstance(v, (float, np.floating)) else v)) for k, v in t.params.items()}
-        })
+        trials.append(
+            {
+                "number": t.number,
+                "state": str(t.state),
+                "value": None if t.value is None else float(t.value),
+                "params": {
+                    k: (
+                        None
+                        if v is None
+                        else (int(v) if isinstance(v, (int, np.integer)) else float(v) if isinstance(v, (float, np.floating)) else v)
+                    )
+                    for k, v in t.params.items()
+                },
+            }
+        )
     best = None
     try:
         best = {"number": study.best_trial.number, "value": float(study.best_trial.value), "params": study.best_trial.params}
@@ -90,48 +164,44 @@ def _study_summary(study: optuna.study.Study) -> Dict[str, Any]:
     return {"n_trials": len(study.trials), "best_trial": best, "trials": trials}
 
 
-# ---------------------------------------
-# Primary HPO function
-# ---------------------------------------
 def run_hpo(
     model_name: str,
     X: np.ndarray,
     y: np.ndarray,
     time_budget: int = 120,
+    n_trials: Optional[int] = None,
     cv: int = 3,
     random_state: int = 0,
     direction: Optional[str] = None,
     n_jobs: int = 1,
+    task_override: Optional[str] = None,
+    callbacks: Optional[list] = None,
+    patience: Optional[int] = None,
+    min_trials_before_stop: int = 5,
+    tolerance: float = 0.0,
 ) -> Dict[str, Any]:
     """
-    주어진 X,y에 대해 Optuna로 하이퍼파라미터를 탐색합니다.
+    주어진 X, y에 대해 Optuna 기반 HPO 수행.
+    model_name은 MODEL_CHOICES 중 하나.
 
     Args:
-        model_name: 튜닝할 모델 이름(예: 'RandomForest', 'RandomForestClassifier', 'RandomForestRegressor')
-        X: numpy array (n_samples, n_features)
-        y: numpy array (n_samples,)
-        time_budget: 타임아웃(초)
-        cv: 교차검증 분할 수
-        direction: 'maximize' 또는 'minimize' (자동 결정 가능)
-        n_jobs: cross_val_score에 넘길 n_jobs (주의: 병렬 실행 시 프로세스/메모리 고려)
-
-    Returns:
-        dict: {
-          'best_params': {...},
-          'best_value': float,
-          'study_summary': {...},
-          'error': None or str
-        }
+        time_budget: 전체 탐색 시간(초)
+        n_trials: 최대 trial 수 (None이면 시간 기반)
+        patience: 연속 미개선 trial 허용 횟수 (None/0이면 사용 안 함)
+        min_trials_before_stop: 조기중단 발동 전 최소 trial 수
+        tolerance: 개선으로 인정할 최소 차이 (val > best + tolerance)
     """
     start_time = time.time()
-    res: Dict[str, Any] = {"best_params": None, "best_value": None, "study_summary": None, "error": None}
+    res: Dict[str, Any] = {"best_params": None, "best_value": None, "study_summary": None, "error": None, "model_name": model_name}
 
     try:
-        task = _task_from_y(y)
+        task = task_override if task_override in {"classification", "regression"} else _task_from_y(y)
         if task == "unknown":
-            raise ValueError("타깃(y)의 타입을 판별하지 못했습니다.")
+            raise ValueError("타깃(y)을 분류/회귀로 구분할 수 없습니다.")
 
-        # choose default scorer & cv
+        if model_name not in MODEL_BUILDERS:
+            raise ValueError(f"지원하지 않는 model_name: {model_name}")
+
         if task == "classification":
             cv_split = StratifiedKFold(n_splits=cv, shuffle=True, random_state=random_state)
             scoring = "accuracy"
@@ -140,46 +210,47 @@ def run_hpo(
             cv_split = KFold(n_splits=cv, shuffle=True, random_state=random_state)
             scoring = "r2"
             direction_auto = "maximize"
-
         if direction is None:
             direction = direction_auto
 
-        # define objective
-        def objective(trial: optuna.trial.Trial):
-            # only RandomForest space for now; can be extended for different model_name strings
-            params = _default_search_space(trial)
-            if task == "classification":
-                clf = RandomForestClassifier(
-                    n_estimators=int(params["n_estimators"]),
-                    max_depth=int(params["max_depth"]) if params["max_depth"] is not None else None,
-                    max_features=params["max_features"],
-                    min_samples_split=int(params["min_samples_split"]),
-                    random_state=random_state,
-                )
-            else:
-                clf = RandomForestRegressor(
-                    n_estimators=int(params["n_estimators"]),
-                    max_depth=int(params["max_depth"]) if params["max_depth"] is not None else None,
-                    max_features=params["max_features"],
-                    min_samples_split=int(params["min_samples_split"]),
-                    random_state=random_state,
-                )
+        builder = MODEL_BUILDERS[model_name]
+        best_val_so_far = None
+        no_improve_count = 0
 
-            # cross_val_score; use n_jobs argument carefully
+        def objective(trial: optuna.trial.Trial):
+            clf = builder(trial, random_state=random_state)
             try:
                 scores = cross_val_score(clf, X, y, cv=cv_split, scoring=scoring, n_jobs=n_jobs, error_score=np.nan)
             except TypeError:
-                # older sklearn may not accept n_jobs in cross_val_score
                 scores = cross_val_score(clf, X, y, cv=cv_split, scoring=scoring, error_score=np.nan)
-            # Use mean score as trial value
-            mean_score = float(np.nanmean(scores))
-            # Optuna by default maximizes if direction='maximize'
-            return mean_score
+            return float(np.nanmean(scores))
 
-        # Optuna study
+        def _early_stop_callback(study: optuna.study.Study, trial: optuna.trial.FrozenTrial):
+            nonlocal best_val_so_far, no_improve_count
+            val = trial.value
+            if val is None or (isinstance(val, float) and np.isnan(val)):
+                no_improve_count += 1
+            else:
+                if best_val_so_far is None or val > best_val_so_far + tolerance:
+                    best_val_so_far = val
+                    no_improve_count = 0
+                else:
+                    no_improve_count += 1
+            if patience and patience > 0:
+                if len(study.trials) >= max(min_trials_before_stop, patience) and no_improve_count >= patience:
+                    study.stop()
+
+        cb_list = callbacks[:] if callbacks else []
+        if patience and patience > 0:
+            cb_list.append(_early_stop_callback)
+
         study = optuna.create_study(direction=direction, pruner=MedianPruner())
-        # run optimize with timeout
-        study.optimize(objective, timeout=time_budget)
+        study.optimize(
+            objective,
+            timeout=time_budget,
+            n_trials=n_trials,
+            callbacks=cb_list if cb_list else None,
+        )
 
         best_trial = study.best_trial
         res["best_params"] = best_trial.params if best_trial is not None else None
@@ -194,19 +265,13 @@ def run_hpo(
         return res
 
 
-# ---------------------------------------
-# Backward-compatible wrapper: run_optuna_sample
-# ---------------------------------------
-def run_optuna_sample(df, time_budget: int = 60) -> Dict[str, Any]:
+def run_optuna_sample(df, time_budget: int = 60, model_name: str = "RandomForestClassifier") -> Dict[str, Any]:
     """
-    하위호환 함수: modules.pipeline에서 예전 스켈레톤이 호출할 수 있도록 제공.
-    - df: pandas.DataFrame, 'target' 컬럼을 우선으로 사용
-    - time_budget: 초
-
-    반환: run_hpo와 같은 형식의 dict
+    간이 샘플: df에서 target 컬럼을 찾고 지정된 model_name으로 HPO 수행.
     """
     try:
         import pandas as pd
+
         if not isinstance(df, pd.DataFrame):
             raise ValueError("df는 pandas.DataFrame 이어야 합니다.")
         # find target col
@@ -216,7 +281,6 @@ def run_optuna_sample(df, time_budget: int = 60) -> Dict[str, Any]:
                 target_col = cand
                 break
         if target_col is None:
-            # try heuristic: non-numeric with small cardinality
             for c in df.columns:
                 if not pd.api.types.is_numeric_dtype(df[c]):
                     nunique = int(df[c].nunique(dropna=True))
@@ -224,12 +288,11 @@ def run_optuna_sample(df, time_budget: int = 60) -> Dict[str, Any]:
                         target_col = c
                         break
         if target_col is None:
-            raise ValueError("타깃 컬럼을 찾을 수 없습니다. 'target' 컬럼을 넣거나 target_col을 명시하세요.")
+            raise ValueError("타깃 컬럼을 찾을 수 없습니다.")
 
         X = df.select_dtypes(include=["number"]).drop(columns=[target_col], errors="ignore").fillna(0).values
         y = df[target_col].values
-        # call run_hpo (default model_name RandomForest)
-        return run_hpo(model_name="RandomForest", X=X, y=y, time_budget=time_budget)
+        return run_hpo(model_name=model_name, X=X, y=y, time_budget=time_budget)
     except Exception as e:
         logger.error("run_optuna_sample 실패: %s", e)
         return {"error": str(e)}

@@ -1,23 +1,32 @@
+﻿# -*- coding: utf-8 -*-
 # pages/05_feature_engineering.py
 """
 5단계 - 특징 공학
 
 안내:
-- 타깃 컬럼은 자동 생성 입력에서 제외합니다(데이터 누수 방지).
-- 생성된 특징을 미리보고 선택 적용/교체할 수 있습니다.
-- 옵션: 중요도 기반 특징 선택(RandomForest).
+- 타깃 컬럼은 자동 생성 입력에서 제외(누수 방지).
+- 생성 입력은 항상 전처리본(df_preprocessed) 선택합니다.
+- 생성 결과는 df_features에 저장하며, 필요 시 생략/확정 버튼으로 이전 단계 데이터를 그대로 사용할 수 있습니다.
 """
 import streamlit as st
-from typing import List, Tuple
+from typing import List
+import pandas as pd
 
 st.set_page_config(layout="wide")
 st.title("5 - 특징 공학")
 
 # Session defaults
-st.session_state.setdefault("df", None)
-st.session_state.setdefault("df_preprocessed", None)
-st.session_state.setdefault("feature_engineering_meta", None)
-st.session_state.setdefault("df_features", None)
+for key in [
+    "df_original",
+    "df_dropped",
+    "df_preprocessed",
+    "df_features",
+    "df_features_train",
+    "df_features_test",
+    "feature_engineering_meta",
+    "target_col",
+]:
+    st.session_state.setdefault(key, None)
 
 # Imports (fallbacks)
 try:
@@ -30,33 +39,67 @@ try:
 except Exception:
     import modules.io_utils as io_utils  # type: ignore
 
+def _apply_meta_to_full(df_full: pd.DataFrame, meta: dict) -> pd.DataFrame:
+    """Apply generated feature rules (from train fit) to full dataset."""
+    df_out = df_full.copy()
+    methods = meta.get("method", {})
+    new_feats = meta.get("new_features", [])
+    for f in new_feats:
+        method = methods.get(f)
+        try:
+            if method == "ratio" and "__div__" in f:
+                a, b = f.split("__div__")
+                df_out[f] = fe_mod._safe_divide(df_out[a], df_out[b])  # type: ignore
+            elif method == "diff" and "__minus__" in f:
+                a, b = f.split("__minus__")
+                df_out[f] = pd.to_numeric(df_out[a], errors="coerce").fillna(0) - pd.to_numeric(df_out[b], errors="coerce").fillna(0)
+            elif method == "sum" and "__plus__" in f:
+                a, b = f.split("__plus__")
+                df_out[f] = pd.to_numeric(df_out[a], errors="coerce").fillna(0) + pd.to_numeric(df_out[b], errors="coerce").fillna(0)
+            elif method == "log1p" and f.endswith("__log1p"):
+                base = f[: -len("__log1p")]
+                df_out[f] = fe_mod._safe_log1p(df_out[base])  # type: ignore
+            elif method == "datetime_extract" and "__" in f:
+                base, attr = f.split("__", 1)
+                s = pd.to_datetime(df_out[base], errors="coerce")
+                if attr == "weekday":
+                    df_out[f] = s.dt.weekday.fillna(-1).astype(int)
+                elif attr == "hour":
+                    df_out[f] = s.dt.hour.fillna(-1).astype(int)
+                else:
+                    df_out[f] = getattr(s.dt, attr).fillna(-1).astype(int)
+            # if method is unknown, skip silently
+        except Exception:
+            continue
+    return df_out
 
-def get_base_df() -> Tuple[object, bool]:
-    """Prefer preprocessed dataframe when available."""
-    df_feat = st.session_state.get("df_features")
-    if df_feat is not None:
-        return df_feat, st.session_state.get("df_preprocessed") is not None
-    df_pre = st.session_state.get("df_preprocessed")
-    if df_pre is not None:
-        return df_pre, True
-    return st.session_state.get("df"), False
+
+def get_source_df():
+    return st.session_state.get("df_preprocessed")
 
 
-base_df, used_pre = get_base_df()
+def get_current_features_df():
+    if st.session_state.get("df_features") is not None:
+        return st.session_state["df_features"], "df_features"
+    return get_source_df()
+
+source_df = st.session_state["df_preprocessed"]
+base_df = get_current_features_df()
 target_col = st.session_state.get("target_col")
+train_idx = st.session_state.get("train_idx")
+test_idx = st.session_state.get("test_idx")
 
-if base_df is None:
-    st.warning("먼저 Upload 또는 Preprocessing 페이지에서 데이터를 준비해 주세요.")
+if source_df is None:
+    st.warning("Upload/Preprocessing 이후 데이터를 준비해 주세요.")
     st.stop()
 
 st.write(
-    f"활성 데이터프레임: {base_df.shape[0]} 행 × {base_df.shape[1]} 열 "
-    f"(전처리본 사용: {'예' if used_pre else '아니요'})"
+    f"생성 입력 데이터: {source_df.shape[0]} 행 × {source_df.shape[1]} 열"
 )
-if target_col and target_col in base_df.columns:
+if target_col and target_col in source_df.columns:
     st.caption(f"타깃 컬럼은 생성 대상에서 제외합니다: `{target_col}`")
 
-# 주요 설정 (화면 내)
+# 주요 설정 (본문)
 st.markdown("### 자동 생성 설정")
 col_cfg1, col_cfg2, col_cfg3 = st.columns(3)
 with col_cfg1:
@@ -85,16 +128,22 @@ col_gen_a, col_gen_b = st.columns([2, 1])
 with col_gen_a:
     if st.button("자동 생성 실행"):
         try:
-            feature_input = (
-                base_df.drop(columns=[target_col], errors="ignore") if target_col else base_df
-            )
-            df_extended, meta = fe_mod.auto_generate_features(
-                feature_input,
+            feature_input_full = source_df.drop(columns=[target_col], errors="ignore") if target_col else source_df
+            # fit on train subset if available
+            if isinstance(train_idx, list) and len(train_idx) > 0:
+                feature_input_train = feature_input_full.iloc[train_idx].copy()
+            else:
+                feature_input_train = feature_input_full
+
+            df_extended_train, meta = fe_mod.auto_generate_features(
+                feature_input_train,
                 max_new=int(max_new),
                 methods=methods,
                 datetime_extract=bool(datetime_extract),
             )
-            st.session_state["fe_generated_df"] = df_extended
+            # apply learned feature rules to full data
+            df_extended_full = _apply_meta_to_full(feature_input_full, meta)
+            st.session_state["fe_generated_df"] = df_extended_full
             st.session_state["feature_engineering_meta"] = meta
             st.success(f"{len(meta.get('new_features', []))}개 특징을 생성했습니다.")
         except Exception as e:
@@ -109,7 +158,7 @@ with col_gen_b:
 
 st.markdown("---")
 
-# 2) 생성 특징 미리보기 및 적용 (타깃 유지)
+# 2) 미리보기 및 적용
 st.subheader("생성 특징 미리보기 및 적용")
 if st.session_state.get("fe_generated_df") is None:
     st.info("먼저 자동 생성 기능을 실행하세요.")
@@ -119,40 +168,40 @@ else:
     new_feats = meta.get("new_features", [])
 
     st.markdown(f"생성된 신규 특징 수: **{len(new_feats)}**")
-    preview_df = base_df.copy()
+    preview_df = source_df.copy()
     for f in new_feats:
         if f in df_gen.columns:
             preview_df[f] = df_gen[f].values
-    st.caption("미리보기 (원본 + 생성 특징)")
+    st.caption("미리보기 (입력 + 생성 특징)")
     st.dataframe(preview_df.head(int(preview_rows)))
 
     keep = st.multiselect("적용할 생성 특징 선택", options=new_feats, default=new_feats)
-    if st.button("선택 특징만 원본에 추가"):
+    if st.button("선택 특징만 반영"):
         try:
-            df_base_copy = base_df.copy()
+            df_base_copy = source_df.copy()
             for f in keep:
                 if f in df_gen.columns:
                     df_base_copy[f] = df_gen[f].values
-            if used_pre:
-                st.session_state["df_preprocessed"] = df_base_copy
-            else:
-                st.session_state["df"] = df_base_copy
             st.session_state["df_features"] = df_base_copy
+            if isinstance(train_idx, list) and len(train_idx) > 0:
+                st.session_state["df_features_train"] = df_base_copy.iloc[train_idx].copy()
+            if isinstance(test_idx, list) and len(test_idx) > 0:
+                st.session_state["df_features_test"] = df_base_copy.iloc[test_idx].copy()
             st.success(f"선택한 {len(keep)}개 특징을 반영했습니다.")
         except Exception as e:
             st.error(f"적용 실패: {e}")
 
     if st.button("전체 생성본으로 교체 (타깃 유지)"):
         try:
-            df_with_target = base_df.copy()
+            df_with_target = source_df.copy()
             for f in new_feats:
                 if f in df_gen.columns:
                     df_with_target[f] = df_gen[f].values
-            if used_pre:
-                st.session_state["df_preprocessed"] = df_with_target
-            else:
-                st.session_state["df"] = df_with_target
             st.session_state["df_features"] = df_with_target
+            if isinstance(train_idx, list) and len(train_idx) > 0:
+                st.session_state["df_features_train"] = df_with_target.iloc[train_idx].copy()
+            if isinstance(test_idx, list) and len(test_idx) > 0:
+                st.session_state["df_features_test"] = df_with_target.iloc[test_idx].copy()
             st.success("현재 데이터프레임을 생성본으로 교체했습니다.")
         except Exception as e:
             st.error(f"교체 실패: {e}")
@@ -175,7 +224,7 @@ else:
 
 st.markdown("---")
 
-# 3) 중요도 기반 선택 (옵션, 타깃 필요)
+# 3) 중요도 기반 선택 (옵션)
 st.subheader("중요도 기반 선택 (옵션)")
 if use_importance:
     if st.button("중요도 기준 상위 k개 추천"):
@@ -184,10 +233,26 @@ if use_importance:
             if target_col is None:
                 st.warning("타깃 컬럼을 먼저 지정하세요. Overview 페이지에서 설정할 수 있습니다.")
             else:
-                df_for_imp, _ = get_base_df()
-                if df_for_imp is None or target_col not in df_for_imp.columns:
+                df_for_imp_full = next(
+                    (
+                        x
+                        for x in [
+                            st.session_state.get("df_features"),
+                            st.session_state.get("df_preprocessed"),
+                            st.session_state.get("df_dropped"),
+                            st.session_state.get("df_original"),
+                        ]
+                        if x is not None
+                    ),
+                    None,
+                )
+                if df_for_imp_full is None or target_col not in df_for_imp_full.columns:
                     st.error("타깃 컬럼이 포함된 데이터가 없습니다.")
                 else:
+                    if isinstance(train_idx, list) and len(train_idx) > 0:
+                        df_for_imp = df_for_imp_full.iloc[train_idx].copy()
+                    else:
+                        df_for_imp = df_for_imp_full
                     top_feats = fe_mod.select_features_by_importance(
                         df_for_imp,
                         target_col=target_col,
@@ -197,25 +262,58 @@ if use_importance:
                     st.session_state["fe_top_features"] = top_feats
                     st.success(f"중요도 기준 {len(top_feats)}개를 추천했습니다.")
                     st.write(top_feats)
-                    if st.button("추천 특징만 남기기 (타깃 포함)"):
-                        try:
-                            df_keep = df_for_imp[top_feats].copy()
-                            df_keep[target_col] = df_for_imp[target_col].values
-                            if used_pre:
-                                st.session_state["df_preprocessed"] = df_keep
-                            else:
-                                st.session_state["df"] = df_keep
-                            st.success("추천 특징만 유지했습니다.")
-                        except Exception as e:
-                            st.error(f"추천 적용 실패: {e}")
         except Exception as e:
             st.error(f"중요도 계산 실패: {e}")
+    # If 추천 결과가 세션에 남아있다면 적용 버튼 노출
+    top_feats_saved: list = st.session_state.get("fe_top_features") or []
+    if top_feats_saved:
+        st.caption(f"최근 추천 특징 {len(top_feats_saved)}개를 적용할 수 있습니다.")
+        if st.button("추천 특징만 남기기 (타깃 포함)"):
+            try:
+                target_col = st.session_state.get("target_col")
+                df_for_imp_full = next(
+                    (
+                        x
+                        for x in [
+                            st.session_state.get("df_features"),
+                            st.session_state.get("df_preprocessed"),
+                            st.session_state.get("df_dropped"),
+                            st.session_state.get("df_original"),
+                        ]
+                        if x is not None
+                    ),
+                    None,
+                )
+                if target_col is None or df_for_imp_full is None or target_col not in df_for_imp_full.columns:
+                    st.error("타깃 컬럼이 포함된 데이터가 없습니다.")
+                else:
+                    available = [c for c in top_feats_saved if c in df_for_imp_full.columns]
+                    missing = [c for c in top_feats_saved if c not in df_for_imp_full.columns]
+                    if not available:
+                        st.error("추천된 특징이 현재 데이터에 없습니다.")
+                    else:
+                        df_keep_full = df_for_imp_full[available].copy()
+                        df_keep_full[target_col] = df_for_imp_full[target_col].values
+                        st.session_state["df_features"] = df_keep_full
+                        if isinstance(train_idx, list) and len(train_idx) > 0:
+                            st.session_state["df_features_train"] = df_keep_full.iloc[train_idx].copy()
+                        if isinstance(test_idx, list) and len(test_idx) > 0:
+                            st.session_state["df_features_test"] = df_keep_full.iloc[test_idx].copy()
+                        if missing:
+                            st.warning(f"일부 추천 특징은 현재 데이터에 없어 제외했습니다: {missing}")
+                        st.success(f"추천 특징 {len(available)}개만 유지했습니다.")
+            except Exception as e:
+                st.error(f"추천 적용 실패: {e}")
 else:
     st.info("위 설정에서 '중요도 기반 선택 실행'을 켜면 동작합니다.")
 
 st.markdown("---")
 if st.button("특징공학 생략/현재 데이터로 확정"):
-    st.session_state["df_features"] = base_df.copy()
-    st.success("현재 데이터 상태를 그대로 다음 단계에 사용합니다.")
+    st.session_state["df_features"] = source_df.copy()
+    if isinstance(train_idx, list) and len(train_idx) > 0:
+        st.session_state["df_features_train"] = source_df.iloc[train_idx].copy()
+    if isinstance(test_idx, list) and len(test_idx) > 0:
+        st.session_state["df_features_test"] = source_df.iloc[test_idx].copy()
+    st.success("현재 단계 데이터를 그대로 다음 단계에 사용합니다.")
 
 st.write("다음 단계: 모델 선택(베이스라인/HPO)으로 이동하세요.")

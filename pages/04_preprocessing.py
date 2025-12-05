@@ -9,16 +9,28 @@
 import pandas as pd
 import streamlit as st
 from typing import Optional
+from sklearn.model_selection import train_test_split
 
 st.set_page_config(layout="wide")
 st.title("4 - 전처리")
 
 # Session defaults
-st.session_state.setdefault("df", None)
-st.session_state.setdefault("df_preprocessed", None)
-st.session_state.setdefault("preprocessing_pipeline", None)
-st.session_state.setdefault("target_col", None)
-st.session_state.setdefault("df_features", None)  # downstream 특징공학/모델 단계에서 사용
+for key in [
+    "df_original",
+    "df_dropped",
+    "df_preprocessed",
+    "df_preprocessed_train",
+    "df_preprocessed_test",
+    "df_features",
+    "df_features_train",
+    "df_features_test",
+    "df",
+    "preprocessing_pipeline",
+    "target_col",
+    "train_idx",
+    "test_idx",
+]:
+    st.session_state.setdefault(key, None)
 
 # Imports (fallbacks)
 try:
@@ -31,8 +43,11 @@ try:
 except Exception:
     import modules.io_utils as io_utils  # type: ignore
 
-df: Optional[pd.DataFrame] = st.session_state.get("df")
+df_dropped = st.session_state.get("df_dropped")
+df: Optional[pd.DataFrame] = df_dropped
 target_col = st.session_state.get("target_col")
+train_idx = st.session_state.get("train_idx")
+test_idx = st.session_state.get("test_idx")
 
 if df is None:
     st.warning("Upload 페이지에서 데이터를 불러온 후 다시 시도하세요.")
@@ -66,23 +81,40 @@ with col3:
     st.metric("결측 총합", n_missing)
 
 def _apply_pipeline(df_input: pd.DataFrame):
-    """Build and apply preprocessor excluding target; return (df_trans, preprocessor)."""
+    """Build preprocessor on train subset; apply to train/test; return (df_trans, preprocessor)."""
     df_work = df_input.copy()
     tgt = None
     if target_col and target_col in df_work.columns:
         tgt = df_work[target_col].copy()
         df_work = df_work.drop(columns=[target_col])
+    # split train/test
+    if isinstance(train_idx, list) and len(train_idx) > 0:
+        df_train = df_work.iloc[train_idx].copy()
+    else:
+        df_train = df_work.copy()
+    if isinstance(test_idx, list) and len(test_idx) > 0:
+        df_test = df_work.iloc[test_idx].copy()
+    else:
+        df_test = None
     pre = prep.build_preprocessor(
-        df_work,
+        df_train,
         numeric_imputer=numeric_imputer,
         categorical_imputer=categorical_imputer,
         scale_numeric=scale_numeric,
         use_onehot=use_onehot,
         onehot_threshold=int(onehot_threshold),
     )
-    df_trans = prep.apply_preprocessor(pre, df_work)
+    df_train_trans = prep.apply_preprocessor(pre, df_train)
+    if df_test is not None:
+        df_test_trans = prep.apply_preprocessor(pre, df_test)
+        df_train_trans.index = df_train.index
+        df_test_trans.index = df_test.index
+        df_trans = pd.concat([df_train_trans, df_test_trans]).sort_index()
+    else:
+        df_train_trans.index = df_train.index
+        df_trans = df_train_trans
     if tgt is not None:
-        df_trans[target_col] = tgt.values
+        df_trans[target_col] = tgt.loc[df_trans.index].values
     return df_trans, pre
 
 st.markdown("---")
@@ -111,6 +143,8 @@ st.markdown("---")
 st.subheader("전처리 적용 및 저장")
 col_apply, col_actions = st.columns([2, 1])
 with col_apply:
+    if isinstance(train_idx, list) and len(train_idx) > 0:
+        st.caption(f"전처리는 train({len(train_idx)})에 fit 후 전체(train+test)에 동일 규칙을 적용합니다.")
     if st.button("전처리 적용 (Fit & Transform)"):
         try:
             df_trans, pre = _apply_pipeline(df)
@@ -118,6 +152,15 @@ with col_apply:
             st.session_state["df_preprocessed"] = df_trans
             # 전처리 결과를 기본 특징 데이터로 초기화
             st.session_state["df_features"] = df_trans
+            # 전처리된 train/test 별도 저장 (있으면)
+            if isinstance(train_idx, list) and len(train_idx) > 0:
+                st.session_state["df_preprocessed_train"] = df_trans.iloc[train_idx].copy()
+            if isinstance(test_idx, list) and len(test_idx) > 0:
+                st.session_state["df_preprocessed_test"] = df_trans.iloc[test_idx].copy()
+            if isinstance(train_idx, list) and len(train_idx) > 0:
+                st.session_state["df_features_train"] = df_trans.iloc[train_idx].copy()
+            if isinstance(test_idx, list) and len(test_idx) > 0:
+                st.session_state["df_features_test"] = df_trans.iloc[test_idx].copy()
             st.success("전처리 완료: st.session_state['df_preprocessed'] 에 저장되었습니다.")
             st.dataframe(df_trans.head(preview_n))
         except Exception as e:

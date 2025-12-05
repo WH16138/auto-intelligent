@@ -14,18 +14,26 @@ Features:
 import streamlit as st
 import pandas as pd
 from typing import Optional
+from sklearn.model_selection import train_test_split
 
 st.set_page_config(layout="wide")
 
 st.title("1 - Upload (데이터 수집)")
 
 # Ensure session keys used by app exist
-if "df" not in st.session_state:
-    st.session_state["df"] = None
-if "fingerprint" not in st.session_state:
-    st.session_state["fingerprint"] = None
-if "target_col" not in st.session_state:
-    st.session_state["target_col"] = None
+for key in [
+    "df_original",
+    "df_dropped",
+    "df_preprocessed",
+    "df_features",
+    "df",
+    "fingerprint",
+    "target_col",
+    "train_idx",
+    "test_idx",
+    "split_meta",
+]:
+    st.session_state.setdefault(key, None)
 
 # Try import ingestion module (required)
 try:
@@ -51,8 +59,23 @@ with col1:
                 except Exception:
                     uploaded.seek(0)
                     df = pd.read_csv(uploaded, encoding="utf-8", engine="python")
-            st.session_state["df"] = df
-            st.success(f"CSV 업로드 성공: {df.shape[0]}행 × {df.shape[1]}열")
+            # Set all stage data to the original upload
+            st.session_state["df_original"] = df.copy()
+            st.session_state["df_dropped"] = df.copy()
+            st.session_state["df_preprocessed"] = df.copy()
+            st.session_state["df_features"] = df.copy()
+            st.session_state["df"] = df.copy()  # backward compatibility
+            try:
+                idx = list(range(len(df)))
+                train_idx, test_idx = train_test_split(idx, test_size=0.2, random_state=42, stratify=None)
+                st.session_state["train_idx"] = train_idx
+                st.session_state["test_idx"] = test_idx
+                st.session_state["split_meta"] = {"test_size": 0.2, "random_state": 42, "stratify": False}
+            except Exception:
+                st.session_state["train_idx"] = None
+                st.session_state["test_idx"] = None
+                st.session_state["split_meta"] = {"test_size": 0.2, "random_state": 42, "stratify": False}
+            st.success(f"CSV 업로드 성공: {df.shape[0]}행 × {df.shape[1]}열 (train/test 분할 저장)")
         except Exception as e:
             st.session_state["df"] = None
             st.error(f"CSV 읽기 실패: {e}")
@@ -64,16 +87,44 @@ with col1:
         if st.button("샘플 로드: breast_cancer"):
             try:
                 df = ingestion.load_sample("breast_cancer")
-                st.session_state["df"] = df
-                st.success("breast_cancer 샘플 로드 완료")
+                st.session_state["df_original"] = df.copy()
+                st.session_state["df_dropped"] = df.copy()
+                st.session_state["df_preprocessed"] = df.copy()
+                st.session_state["df_features"] = df.copy()
+                st.session_state["df"] = df.copy()
+                try:
+                    idx = list(range(len(df)))
+                    train_idx, test_idx = train_test_split(idx, test_size=0.2, random_state=42, stratify=None)
+                    st.session_state["train_idx"] = train_idx
+                    st.session_state["test_idx"] = test_idx
+                    st.session_state["split_meta"] = {"test_size": 0.2, "random_state": 42, "stratify": False}
+                except Exception:
+                    st.session_state["train_idx"] = None
+                    st.session_state["test_idx"] = None
+                    st.session_state["split_meta"] = {"test_size": 0.2, "random_state": 42, "stratify": False}
+                st.success("breast_cancer 샘플 로드 완료 (train/test 분할 저장)")
             except Exception as e:
                 st.error(f"샘플 로드 실패: {e}")
     with c2:
         if st.button("샘플 로드: iris"):
             try:
                 df = ingestion.load_sample("iris")
-                st.session_state["df"] = df
-                st.success("iris 샘플 로드 완료")
+                st.session_state["df_original"] = df.copy()
+                st.session_state["df_dropped"] = df.copy()
+                st.session_state["df_preprocessed"] = df.copy()
+                st.session_state["df_features"] = df.copy()
+                st.session_state["df"] = df.copy()
+                try:
+                    idx = list(range(len(df)))
+                    train_idx, test_idx = train_test_split(idx, test_size=0.2, random_state=42, stratify=None)
+                    st.session_state["train_idx"] = train_idx
+                    st.session_state["test_idx"] = test_idx
+                    st.session_state["split_meta"] = {"test_size": 0.2, "random_state": 42, "stratify": False}
+                except Exception:
+                    st.session_state["train_idx"] = None
+                    st.session_state["test_idx"] = None
+                    st.session_state["split_meta"] = {"test_size": 0.2, "random_state": 42, "stratify": False}
+                st.success("iris 샘플 로드 완료 (train/test 분할 저장)")
             except Exception as e:
                 st.error(f"샘플 로드 실패: {e}")
 
@@ -82,12 +133,14 @@ with col1:
         # Clear all session entries then set expected keys to None so 다른 페이지도 안전하게 동작
         st.session_state.clear()
         for k in [
+            "df_original",
+            "df_dropped",
+            "df_preprocessed",
+            "df_features",
             "df",
             "fingerprint",
             "target_col",
-            "df_preprocessed",
             "preprocessing_pipeline",
-            "df_features",
             "feature_engineering_meta",
             "baselines_df",
             "baseline_models",
@@ -96,6 +149,8 @@ with col1:
             "problem_type",
             "hpo_result",
             "validation_result",
+            "train_idx",
+            "test_idx",
         ]:
             st.session_state[k] = None
         st.success("세션 데이터를 모두 삭제했습니다. 이어서 새 데이터를 업로드하거나 샘플을 로드하세요.")

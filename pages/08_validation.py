@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, Any
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     accuracy_score,
@@ -29,7 +29,10 @@ from sklearn.metrics import (
     r2_score,
 )
 from sklearn.inspection import permutation_importance
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, GradientBoostingClassifier, GradientBoostingRegressor
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.base import clone
 
 try:
     from modules import explain as explain_mod
@@ -82,21 +85,15 @@ def plot_regression_residuals(y_true, y_pred):
     return fig
 
 
-def get_active_df() -> Tuple[Optional[pd.DataFrame], bool]:
-    df_feat = st.session_state.get("df_features")
-    if df_feat is not None:
-        return df_feat, True
-    df_pre = st.session_state.get("df_preprocessed")
-    if df_pre is not None:
-        return df_pre, True
-    return st.session_state.get("df"), False
-
+def get_active_df():
+    return st.session_state.get("df_features")
 
 def prepare_features(
     df: pd.DataFrame,
     target_col: str,
     feature_names_hint: Optional[list] = None,
     preprocessor=None,
+    forced_task: Optional[str] = None,
 ) -> Tuple[pd.DataFrame, np.ndarray, str, list]:
     """Return X_df, y, task, feature_names; applies preprocessor if provided."""
     df_clean = df.dropna(subset=[target_col]).copy()
@@ -107,11 +104,17 @@ def prepare_features(
     X_df = df_clean.drop(columns=[target_col])
     # apply preprocessor if available
     if preprocessor is not None and prep is not None:
-        try:
-            X_df = prep.apply_preprocessor(preprocessor, X_df)
-        except Exception as e:
-            st.warning(f"전처리기 적용 실패, 원본 수치형만 사용합니다: {e}")
+        expected_cols = set(getattr(preprocessor, "feature_names_in_", []))
+        missing_cols = expected_cols - set(X_df.columns) if expected_cols else set()
+        if missing_cols:
+            st.warning(f"전처리기 입력 컬럼이 없어 원본 수치형만 사용합니다. 누락: {sorted(missing_cols)}")
             X_df = X_df.select_dtypes(include=["number"])
+        else:
+            try:
+                X_df = prep.apply_preprocessor(preprocessor, X_df)
+            except Exception as e:
+                st.warning(f"전처리기 적용 실패, 원본 수치형만 사용합니다: {e}")
+                X_df = X_df.select_dtypes(include=["number"])
     else:
         X_df = X_df.select_dtypes(include=["number"])
 
@@ -127,7 +130,7 @@ def prepare_features(
         if common:
             X_df = X_df[common]
     feature_names = list(X_df.columns)
-    task = ms.detect_task_type(pd.DataFrame({target_col: y}), target_col=target_col)
+    task = ms.detect_task_type(pd.DataFrame({target_col: y}), target_col=target_col, forced_task=forced_task)
     return X_df, y, task, feature_names
 
 
@@ -138,19 +141,120 @@ def prepare_split(
     preprocessor=None,
     test_size: float = 0.2,
     random_state: int = 42,
+    forced_task: Optional[str] = None,
+    split_indices: Optional[Tuple[list, list]] = None,
 ):
-    X_df, y, task, feature_names = prepare_features(df, target_col, feature_names_hint=feature_names_hint, preprocessor=preprocessor)
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_df.values,
-        y,
-        test_size=test_size,
-        random_state=random_state,
-        stratify=y if task == "classification" else None,
+    X_df, y, task, feature_names = prepare_features(
+        df,
+        target_col,
+        feature_names_hint=feature_names_hint,
+        preprocessor=preprocessor,
+        forced_task=forced_task,
     )
+    if split_indices:
+        train_idx, test_idx = split_indices
+        X_train = X_df.iloc[train_idx].values
+        X_test = X_df.iloc[test_idx].values
+        y_train = y[train_idx]
+        y_test = y[test_idx]
+    else:
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_df.values,
+            y,
+            test_size=test_size,
+            random_state=random_state,
+            stratify=y if task == "classification" else None,
+        )
     return X_train, X_test, y_train, y_test, task, feature_names
 
 
-def train_hpo_model(df: pd.DataFrame, target_col: str, params: dict, random_state: int = 0, preprocessor=None):
+def get_or_create_split_indices(
+    df: pd.DataFrame,
+    target_col: str,
+    session_key: str = "val_split_indices",
+    test_size: float = 0.2,
+    random_state: int = 42,
+    stratify_flag: bool = False,
+    force_new: bool = False,
+) -> Tuple[list, list]:
+    """Persist split indices in session to ensure consistent train/test separation."""
+    saved: Optional[Dict[str, Any]] = st.session_state.get(session_key)
+    if (
+        not force_new
+        and saved
+        and saved.get("target_col") == target_col
+        and saved.get("n_rows") == len(df)
+        and abs(saved.get("test_size", test_size) - test_size) < 1e-6
+        and saved.get("random_state", random_state) == random_state
+        and saved.get("stratify_flag", stratify_flag) == stratify_flag
+    ):
+        return saved.get("train_idx", []), saved.get("test_idx", [])
+
+    idx = np.arange(len(df))
+    stratify = None
+    if stratify_flag:
+        try:
+            y_vals = df[target_col].values
+            if len(pd.unique(y_vals)) > 1:
+                stratify = y_vals
+        except Exception:
+            stratify = None
+
+    train_idx, test_idx = train_test_split(
+        idx,
+        test_size=test_size,
+        random_state=random_state,
+        stratify=stratify,
+    )
+    st.session_state[session_key] = {
+        "train_idx": train_idx.tolist(),
+        "test_idx": test_idx.tolist(),
+        "target_col": target_col,
+        "n_rows": len(df),
+        "test_size": test_size,
+        "random_state": random_state,
+        "stratify_flag": stratify_flag,
+    }
+    return train_idx, test_idx
+
+
+def _build_hpo_model(model_name: str, params: dict, task: str, random_state: int = 0):
+    """Instantiate model from HPO results with safety defaults."""
+    if model_name == "RandomForestClassifier":
+        return RandomForestClassifier(random_state=random_state, **params)
+    if model_name == "RandomForestRegressor":
+        return RandomForestRegressor(random_state=random_state, **params)
+    if model_name == "GradientBoostingClassifier":
+        return GradientBoostingClassifier(random_state=random_state, **params)
+    if model_name == "GradientBoostingRegressor":
+        return GradientBoostingRegressor(random_state=random_state, **params)
+    if model_name == "SVC":
+        # ensure probability flag for downstream metrics
+        params = {**params}
+        params.setdefault("probability", True)
+        params.setdefault("random_state", random_state)
+        return SVC(**params)
+    if model_name == "LogisticRegression":
+        params = {**params}
+        params.setdefault("max_iter", 500)
+        params.setdefault("random_state", random_state)
+        return LogisticRegression(**params)
+    # fallback to tree models by task
+    if task == "classification":
+        return RandomForestClassifier(random_state=random_state, **params)
+    return RandomForestRegressor(random_state=random_state, **params)
+
+
+def train_hpo_model(
+    df: pd.DataFrame,
+    target_col: str,
+    params: dict,
+    model_name: Optional[str],
+    random_state: int = 0,
+    preprocessor=None,
+    forced_task: Optional[str] = None,
+    split_indices: Optional[Tuple[list, list]] = None,
+):
     X_train, X_test, y_train, y_test, task, feature_names = prepare_split(
         df,
         target_col,
@@ -158,19 +262,18 @@ def train_hpo_model(df: pd.DataFrame, target_col: str, params: dict, random_stat
         preprocessor=preprocessor,
         test_size=0.2,
         random_state=random_state,
+        forced_task=forced_task,
+        split_indices=split_indices,
     )
-    if task == "classification":
-        model = RandomForestClassifier(random_state=random_state, **params)
-    else:
-        model = RandomForestRegressor(random_state=random_state, **params)
+    model = _build_hpo_model(model_name or "", params, task, random_state=random_state)
     model.fit(X_train, y_train)
     return model, X_test, y_test, task, feature_names
 
 
 # ------------ data selection ------------
-active_df, used_pre = get_active_df()
+active_df = get_active_df()
 if active_df is None:
-    st.error("Upload/Preprocessing 단계에서 데이터를 준비한 뒤 다시 시도하세요.")
+    st.error("Upload 단계에서 데이터를 준비한 뒤 다시 시도하세요.")
     st.stop()
 
 target_col = st.session_state.get("target_col")
@@ -181,21 +284,72 @@ if target_col is None or target_col not in active_df.columns:
 preproc_obj = st.session_state.get("preprocessing_pipeline")
 
 df_feat = st.session_state.get("df_features")
-df_pre = st.session_state.get("df_preprocessed")
-df_raw = st.session_state.get("df")
-# 고정: 특징공학/전처리 반영 데이터 우선, 없으면 원본
-df_eval = df_feat or df_pre or df_raw
+# 고정: 특징공학/전처리 반영 데이터 사용
+df_eval = df_feat
 if df_eval is None:
     st.error("평가할 데이터가 없습니다. 이전 단계에서 데이터를 준비하세요.")
     st.stop()
+split_state_key = "val_split_indices"
+if split_state_key not in st.session_state:
+    st.session_state[split_state_key] = None
+
+# If 별도 train/test 특징 데이터가 있으면 사용
+df_feat_train = st.session_state.get("df_features_train")
+df_feat_test = st.session_state.get("df_features_test")
+has_precomputed_split = df_feat_train is not None and df_feat_test is not None
+if has_precomputed_split:
+    df_eval = pd.concat([df_feat_train, df_feat_test], axis=0).sort_index()
+    preproc_obj = None  # 이미 전처리/특징공학 적용됨
+
+# 추천 특징(중요도 기반)만 존재하면 적용
+fe_top_features = st.session_state.get("fe_top_features")
+if fe_top_features:
+    keep_cols = [c for c in fe_top_features if c in df_eval.columns]
+    if target_col and target_col in df_eval.columns:
+        keep_cols.append(target_col)
+    if keep_cols:
+        df_eval = df_eval[keep_cols].copy()
+
+# Split info (read-only here; config is set upstream)
+split_meta_default = {"test_size": 0.2, "random_state": 42, "stratify": False}
+split_meta_saved = st.session_state.get("split_meta") or split_meta_default
+train_idx_saved = st.session_state.get("train_idx")
+test_idx_saved = st.session_state.get("test_idx")
+if not (isinstance(train_idx_saved, list) and isinstance(test_idx_saved, list) and len(train_idx_saved) > 0 and len(test_idx_saved) > 0):
+    # fallback: create once based on saved meta
+    train_idx_saved, test_idx_saved = get_or_create_split_indices(
+        df_eval,
+        target_col,
+        session_key=split_state_key,
+        test_size=float(split_meta_saved.get("test_size", 0.2)),
+        random_state=int(split_meta_saved.get("random_state", 42)),
+        stratify_flag=bool(split_meta_saved.get("stratify", False)),
+        force_new=False,
+    )
+    st.session_state["train_idx"] = train_idx_saved
+    st.session_state["test_idx"] = test_idx_saved
+
+split_indices = (train_idx_saved, test_idx_saved)
+st.caption(
+    f"분할 정보 (변경은 Upload/초기 설정에서 수행): "
+    f"Train {len(split_indices[0])} | Test {len(split_indices[1])} | "
+    f"비율≈ {split_meta_saved.get('test_size', 0.2):.2f} | "
+    f"stratify: {bool(split_meta_saved.get('stratify', False))} | "
+    f"random_state: {split_meta_saved.get('random_state', 42)}"
+)
 
 # model sources
+problem_type_override = st.session_state.get("problem_type")
 trained_model = st.session_state.get("trained_model")
-trained_problem_type = st.session_state.get("problem_type")
 baselines = st.session_state.get("baseline_models") or {}
 best_baseline_name = st.session_state.get("best_model_name")
 hpo_res = st.session_state.get("hpo_result") or {}
 best_params = hpo_res.get("best_params") if isinstance(hpo_res, dict) else None
+best_params_model = None
+if isinstance(hpo_res, dict):
+    best_params_model = hpo_res.get("model_name")
+if best_params_model is None:
+    best_params_model = st.session_state.get("hpo_model_name")
 
 options = []
 if trained_model is not None:
@@ -234,28 +388,41 @@ try:
                 df_eval,
                 target_col,
                 feature_names_hint=None,
-                preprocessor=preproc_obj if df_eval is df_raw else None,
+                preprocessor=preproc_obj,
+                forced_task=problem_type_override,
+                split_indices=split_indices,
             )
             model = trained_model
     elif model_choice.startswith("베이스라인") and baselines:
         entry = baselines.get(best_baseline_name) if best_baseline_name and baselines.get(best_baseline_name) else list(baselines.values())[0]
-        model = entry.get("model")
+        base_model = entry.get("model")
         task = entry.get("task")
         feature_names = entry.get("feature_names")
-        _, X_test, _, y_test, _, _ = prepare_split(
+        X_train, X_test, y_train, y_test, task, feature_names = prepare_split(
             df_eval,
             target_col,
             feature_names_hint=feature_names,
-            preprocessor=preproc_obj if df_eval is df_raw else None,
+            preprocessor=preproc_obj,
+            forced_task=problem_type_override,
+            split_indices=split_indices,
         )
+        try:
+            model = clone(base_model)
+        except Exception:
+            model = base_model
+        if model is not None:
+            model.fit(X_train, y_train)
     elif model_choice.startswith("HPO") and best_params:
         # retrain RF with best_params; use preprocessor on raw if available
         model, X_test, y_test, task, feature_names = train_hpo_model(
-            df_eval if df_eval is not None else df_raw,
+            df_eval,
             target_col,
             best_params,
+            best_params_model,
             random_state=0,
-            preprocessor=preproc_obj if df_eval is df_raw else None,
+            preprocessor=preproc_obj,
+            forced_task=problem_type_override,
+            split_indices=split_indices,
         )
     else:
         st.error("선택한 모델을 준비할 수 없습니다.")
@@ -351,7 +518,7 @@ try:
         st.subheader("Built-in feature_importances_")
         st.dataframe(imp_df.head(50))
     else:
-        st.info("내장 feature_importances_가 없어 permutation importance로 계산합니다.")
+        st.caption("내장 feature_importances_가 없어 permutation importance로 계산합니다.")
         with st.spinner("Permutation importance 계산 중..."):
             r = permutation_importance(model, X_for_imp, y_test, n_repeats=10, random_state=0, n_jobs=1)
             imp_df = pd.DataFrame(
