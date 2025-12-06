@@ -13,7 +13,7 @@ import streamlit as st
 
 st.set_page_config(layout="wide")
 st.title("9 - Report")
-st.info("한 가지 형식(HTML)으로 깔끔한 보고서를 생성합니다. 기본 선택을 그대로 두고 바로 생성해도 충분합니다.")
+st.info("HTML 형식의 깔끔한 보고서를 생성합니다. 기본 선택을 그대로 두고 바로 생성해도 충분합니다.")
 
 # ------------------------- helpers -------------------------
 def _ensure_dir(path: str):

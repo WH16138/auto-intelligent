@@ -217,7 +217,7 @@ st.markdown("---")
 
 # 3) 중요도 기반 선택
 st.subheader("중요도 기반 선택")
-st.caption("타깃이 있을 때 RandomForest 기반 상위 k개를 추천합니다. 실행과 적용 버튼을 한곳에 모았습니다.")
+st.caption("타깃이 있을 때 RandomForest 기반 상위 k개를 추천합니다.")
 col_imp_main, col_imp_side = st.columns([2, 1])
 with col_imp_main:
     top_k = st.number_input("상위 k개 추천", min_value=1, max_value=500, value=20, step=1)
