@@ -1,4 +1,3 @@
-# pages/04_preprocessing.py
 """
 4단계 - 전처리
 
@@ -33,16 +32,15 @@ for key in [
 ]:
     st.session_state.setdefault(key, None)
 
-# Imports (fallbacks)
 try:
     from modules import preprocessing as prep
 except Exception:
-    import modules.preprocessing as prep  # type: ignore
+    import modules.preprocessing as prep
 
 try:
     from modules import io_utils
 except Exception:
-    import modules.io_utils as io_utils  # type: ignore
+    import modules.io_utils as io_utils
 
 df_dropped = st.session_state.get("df_dropped")
 df: Optional[pd.DataFrame] = df_dropped
@@ -188,4 +186,4 @@ with col_actions:
         st.info("아직 전처리 결과가 없습니다.")
 
 st.markdown("---")
-st.write("다음 단계: Feature Engineering 페이지로 이동하세요.")
+st.info("다음 단계: Feature Engineering 페이지로 이동하세요.")

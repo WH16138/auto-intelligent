@@ -1,6 +1,4 @@
-﻿# -*- coding: utf-8 -*-
-# pages/06_model_selection.py
-"""
+﻿"""
 6단계 - 모델 선택
 
 - df_features 사용
@@ -35,16 +33,15 @@ for key, default in [
 ]:
     st.session_state.setdefault(key, default)
 
-# Imports
 try:
     from modules import model_search as ms
 except Exception:
-    import modules.model_search as ms  # type: ignore
+    import modules.model_search as ms
 
 try:
     from modules import io_utils
 except Exception:
-    import modules.io_utils as io_utils  # type: ignore
+    import modules.io_utils as io_utils
 
 try:
     import plotly.express as px
@@ -257,7 +254,7 @@ else:
             except Exception as e:
                 st.error(f"스냅샷 저장 실패: {e}")
 
-        with st.expander("간단 예측 데모 (상위 1개 샘플)", expanded=False):
+        with st.expander("예측 데모", expanded=False):
             try:
                 if feat_names:
                     sample_df = active_df[feat_names].head(1).fillna(0)
@@ -313,4 +310,4 @@ if st.button("추천 최적 모델을 최종 스냅샷으로 저장"):
                 st.error(f"최종 모델 저장 실패: {e}")
 
 st.markdown("---")
-st.write("다음 단계: Hyperparameter Tuning 페이지로 이동하세요.")
+st.info("다음 단계: Hyperparameter Tuning 페이지로 이동하여, 모델의 성능을 더욱 향상시켜보세요.")

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-# pages/02_overview.py
 """
 2단계 - 데이터 개요 & 컬럼 설정
 
@@ -39,11 +37,11 @@ for key in [
 try:
     from modules import ingestion
 except Exception:
-    import modules.ingestion as ingestion  # type: ignore
+    import modules.ingestion as ingestion
 try:
     from modules import model_search as ms
 except Exception:
-    import modules.model_search as ms  # type: ignore
+    import modules.model_search as ms
 
 
 def _suggest_split_strategy(df: pd.DataFrame, target_col: str, problem_type: str) -> dict:
@@ -402,4 +400,5 @@ if st.button("Fingerprint 다운로드 (JSON)"):
     b = json.dumps(fp, indent=2, ensure_ascii=False).encode("utf-8")
     st.download_button("fingerprint.json 다운로드", data=b, file_name="fingerprint.json", mime="application/json")
 
-st.info("다음 단계: EDA/전처리/특징공학으로 이동하세요.")
+st.markdown("---")
+st.info("다음 단계: EDA 페이지로 이동하여 자동 요약과 시각화를 확인하세요.")

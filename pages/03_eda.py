@@ -1,4 +1,3 @@
-# pages/03_eda.py
 """
 03 - EDA (시각화 및 자동 요약) 페이지
 
@@ -24,16 +23,15 @@ if "fingerprint" not in st.session_state:
 if "target_col" not in st.session_state:
     st.session_state["target_col"] = None
 
-# imports (fallbacks)
 try:
     from modules import eda as eda_mod
 except Exception:
-    import modules.eda as eda_mod  # type: ignore
+    import modules.eda as eda_mod
 
 try:
     from modules import visualization as viz
 except Exception:
-    import modules.visualization as viz  # type: ignore
+    import modules.visualization as viz
 
 df = st.session_state.get("df")
 fingerprint = st.session_state.get("fingerprint")
@@ -43,7 +41,7 @@ if df is None:
     st.warning("먼저 Upload 페이지에서 데이터를 업로드하거나 샘플 데이터를 로드하세요.")
     st.stop()
 
-# --- Top summary and quick metrics ---
+# Top summary and quick metrics
 st.subheader("자동 요약")
 with st.expander("자동 EDA 요약(요약문 + 구조화 정보)", expanded=True):
     try:
@@ -68,7 +66,7 @@ if target_col and target_col in df.columns:
 
 st.markdown("---")
 
-# --- Column-based interactive plotting ---
+# Column-based interactive plotting
 st.subheader("컬럼별 시각화")
 st.caption("컬럼을 하나 선택해 분포/박스플롯·기본 통계를 확인합니다.")
 cols = df.columns.tolist()
@@ -101,7 +99,7 @@ with col2:
 
 st.markdown("---")
 
-# --- Correlation & Missing ---
+# Correlation & Missin
 st.subheader("상관관계 및 결측 패턴")
 st.caption("숫자형 상관관계와 결측 패턴을 확인해 다중공선성·결측 처리를 가이드합니다.")
 c1, c2 = st.columns(2)
@@ -121,7 +119,7 @@ with c2:
 
 st.markdown("---")
 
-# --- Quick pairwise sample (heavy; optional) ---
+# Quick pairwise sample (heavy; optional)
 st.subheader("샘플 기반 산점도 매트릭스 (선택 사항)")
 st.caption("주의: 컬럼/행이 많으면 느려질 수 있습니다. 소규모 데이터나 일부 컬럼만 있을 때 실행하세요.")
 if st.button("샘플 산점도 생성 (시간 소요 가능)"):
@@ -132,5 +130,4 @@ if st.button("샘플 산점도 생성 (시간 소요 가능)"):
         st.warning(f"pairwise plot 생성 실패: {e}")
 
 st.markdown("---")
-
-st.write("다음 단계: 전처리 페이지로 이동하여 결측/인코딩/스케일링을 적용하세요.")
+st.info("다음 단계: Preprocessing 페이지로 이동하여 결측/인코딩/스케일링을 적용하세요.")

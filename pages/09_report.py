@@ -1,8 +1,7 @@
-# pages/09_report.py
 """
 Step 9 - Report
 
-Generates a clean HTML/Markdown report summarizing the pipeline and offers direct downloads.
+전체 워크플로우 요약과 결과 보고서를 HTML 형식으로 생성합니다.
 """
 import datetime
 import json
@@ -192,10 +191,6 @@ def build_md() -> str:
         lines.append(_format_json(validation_res))
         lines.append("```")
     return "\n".join(lines)
-################################################################################
-# Markdown 보고서를 제거하고 HTML만 제공하도록 변경
-################################################################################
-
 
 # ------------------------- actions -------------------------
 if st.button("HTML 보고서 생성"):
@@ -208,4 +203,4 @@ if st.button("HTML 보고서 생성"):
         st.error(f"HTML 생성 실패: {e}")
 
 st.markdown("---")
-st.info("보고서 생성 후 브라우저에서 바로 다운로드하거나 reports/ 폴더에서 확인할 수 있습니다. HTML 형식만 제공합니다.")
+st.info("다음 단계 : 결과가 마음에 들지 않으면 이전 단계로 돌아가 설정을 조정한 후 다시 진행할 수 있습니다. \n 결과가 만족스럽다면 Inference 페이지에서 모델을 실제 데이터에 적용해보세요!")

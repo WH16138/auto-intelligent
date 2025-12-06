@@ -1,4 +1,7 @@
-﻿import streamlit as st
+﻿# -*- coding: utf-8 -*-
+# app.py - Auto-Intelligent landing page
+# Usage: streamlit run app.py
+import streamlit as st
 
 st.set_page_config(
     page_title="Auto-Intelligent",
@@ -88,11 +91,8 @@ with st.expander("자주 묻는 질문"):
         """
         - **사용할 데이터가 없어요.** 01_upload에서 샘플 버튼을 눌러 기본 데이터를 사용해 보세요.
         - **설정값이 많아 어려워요.** 각 단계는 안전한 기본 설정을 제공합니다. 먼저 실행 후, 필요 시 세부 조정하세요.
-        - **긴 출력의 의미를 모르겠어요.** 사용자에게 모든 정보를 확인할 필요가 없습니다. 미리보기/expander를 활용해 요약만 간단히 확인해도 충분합니다.
+        - **긴 출력이 부담될 ** 각 페이지에서 미리보기/expander를 활용해 요약만 확인할 수 있습니다.
         """
     )
 
 st.info("각 단계에서 설명/힌트를 적극 활용해 주세요. 페이지 알림과 경고를 따라가면 초보자도 전체 흐름을 이해할 수 있습니다.")
-
-st.markdown("---")
-st.info("이제, 좌측 사이드바에서 Upload 페이지로 이동하여 데이터를 업로드하거나 샘플 데이터를 로드하여 시작하세요.")

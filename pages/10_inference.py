@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-# pages/10_inference.py
 """
 10 - Model Inference & Download
 
@@ -46,21 +44,20 @@ for key in [
 ]:
     st.session_state.setdefault(key, None)
 
-# Imports
 try:
     from modules import ingestion
 except Exception:
-    import modules.ingestion as ingestion  # type: ignore
+    import modules.ingestion as ingestion
 
 try:
     from modules import io_utils
 except Exception:
-    io_utils = None  # type: ignore
+    io_utils = None
 
 try:
     from modules import feature_engineering as fe_mod
 except Exception:
-    fe_mod = None  # type: ignore
+    fe_mod = None
 
 
 def _apply_fe_meta(df_full: pd.DataFrame, meta: dict) -> pd.DataFrame:
@@ -184,7 +181,7 @@ if uploaded_pred is not None:
         # 1) 전처리
         if preproc_obj is not None:
             try:
-                from modules import preprocessing as prep  # type: ignore
+                from modules import preprocessing as prep
                 df_work = prep.apply_preprocessor(preproc_obj, df_work)
             except Exception as e:
                 st.error(f"전처리 적용 실패: {e}")
@@ -221,7 +218,7 @@ if uploaded_pred is not None:
             file_name="prediction_result.csv",
             mime="text/csv",
         )
-        # Submission-only file (id + prediction)
+        # Submission-only file (id + prediction) (콘테스트 날먹용)
         sub_df = pd.DataFrame({target_name: preds})
         if id_column and id_column in df_pred_orig.columns:
             sub_df.insert(0, id_column, df_pred_orig[id_column].values)
@@ -248,6 +245,7 @@ if st.button("모델 파일 다운로드 준비"):
             file_name=f"{model_entry.get('name') or 'model'}.pkl",
             mime="application/octet-stream",
         )
+        st.success("모델 직렬화 및 다운로드 준비 완료")
     except Exception as e:
         st.error(f"모델 직렬화 실패: {e}")
-
+st.info("모델 파일은 피클 형식(.pkl)으로 다운로드됩니다. 재사용 또는 배포 시 활용하세요.")

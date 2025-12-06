@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-# pages/07_hpo.py
 """
 7단계 - Hyperparameter Tuning
 
@@ -45,7 +43,6 @@ for key in [
 ]:
     st.session_state.setdefault(key, None)
 
-# Imports
 try:
     from modules import hpo as hpo_mod
     HPO_MODELS = getattr(hpo_mod, "MODEL_CHOICES", ["RandomForestClassifier"])
@@ -56,12 +53,12 @@ except Exception:
 try:
     from modules import model_search as ms
 except Exception:
-    import modules.model_search as ms  # type: ignore
+    import modules.model_search as ms
 
 try:
     from modules import io_utils
 except Exception:
-    import modules.io_utils as io_utils  # type: ignore
+    import modules.io_utils as io_utils
 
 
 def _safe_cv(df_in: pd.DataFrame, target: str, requested_cv: int, task: str) -> Tuple[Optional[int], Optional[str]]:
@@ -82,7 +79,7 @@ def _safe_cv(df_in: pd.DataFrame, target: str, requested_cv: int, task: str) -> 
 
 
 def get_df() -> Optional[pd.DataFrame]:
-    # HPO는 특징공학 반영본을 사용
+    # HPO는 특징공학 반영본을 사용 (df_features 은 자동으로 가장 최신 상태 유지됨)
     return st.session_state.get("df_features")
 
 
@@ -237,6 +234,7 @@ with st.expander("불균형 대응/고급 옵션", expanded=False):
 # Run HPO
 st.markdown("---")
 st.subheader("HPO 실행")
+st.warning("HPO 탐색 중에는 사이드바의 다른 페이지로 이동하지 마세요. 이동 시 탐색이 중단되고 진행 상황이 사라질 수 있습니다.")
 
 # 실시간 진행 모니터 영역
 progress_bar = st.progress(0, text="HPO 대기 중...")

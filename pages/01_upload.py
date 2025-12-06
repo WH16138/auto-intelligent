@@ -1,4 +1,3 @@
-# pages/01_upload.py
 """
 Upload page for AutoML-Edu Streamlit app.
 
@@ -40,7 +39,7 @@ for key in [
 try:
     from modules import ingestion
 except Exception:
-    import modules.ingestion as ingestion  # fallback
+    import modules.ingestion as ingestion
 
 col1, col2 = st.columns([1.4, 1])
 
@@ -65,7 +64,7 @@ with col1:
             st.session_state["df_dropped"] = df.copy()
             st.session_state["df_preprocessed"] = df.copy()
             st.session_state["df_features"] = df.copy()
-            st.session_state["df"] = df.copy()  # backward compatibility
+            st.session_state["df"] = df.copy()
             try:
                 idx = list(range(len(df)))
                 train_idx, test_idx = train_test_split(idx, test_size=0.2, random_state=42, stratify=None)
@@ -131,7 +130,7 @@ with col1:
 
     st.markdown("---")
     if st.button("세션 데이터 제거 (완전 초기화)"):
-        # Clear all session entries then set expected keys to None so 다른 페이지도 안전하게 동작
+        # Clear all session entries then set expected keys to None
         st.session_state.clear()
         for k in [
             "df_original",
@@ -169,7 +168,6 @@ with col2:
         st.write("---")
         st.subheader("타깃 & 지문")
 
-        # 타깃 설정을 가까이 배치
         cols = list(df.columns)
         current_target = st.session_state.get("target_col")
         sel = st.selectbox("타깃 컬럼 (모델 학습 시 사용)", options=["(없음)"] + cols, index=(0 if current_target is None else (cols.index(current_target) + 1)), key="target_select_box")
@@ -180,7 +178,6 @@ with col2:
         if st.session_state.get("target_col"):
             st.caption(f"현재 선택된 타깃: `{st.session_state.get('target_col')}`")
 
-        # Fingerprint 버튼과 요약을 한 곳에
         fp = st.session_state.get("fingerprint")
         col_fp_btn, col_fp_preview = st.columns([1, 2])
         with col_fp_btn:
@@ -243,3 +240,6 @@ st.markdown(
 - 타깃 컬럼은 이후 모델 선택/튜닝 단계에서 중요하니 정확히 선택하세요.
 """
 )
+
+st.markdown("---")
+st.info("다음 단계: Overview 페이지로 이동하여 데이터 요약과 지문을 확인하세요.")

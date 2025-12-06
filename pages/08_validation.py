@@ -1,13 +1,19 @@
-# pages/08_validation.py
 """
-Step 8 - Validation
+Step 8 - Model Validation
 
-Supports evaluating:
-- Trained model stored in session (trained_model + X_test/y_test if provided)
-- Best baseline model from Model Selection
-- A RandomForest retrained with HPO best_params (if available)
+이 페이지에서는 다음 중 하나의 모델을 평가할 수 있습니다:
+- 세션에 저장된 훈련된 모델 (trained_model)
+- Model Selection 단계의 베이스라인 추천 모델
+- HPO 단계의 best_params로 새로 학습된 모델
 
-Target column is never used as a feature; rows with missing target are dropped before splitting.
+주요 기능:
+- 분류: Accuracy, F1, Precision, Recall, Confusion Matrix, ROC/PR Curve
+- 회귀: MAE, RMSE, R², Residual Plot
+- Feature Importance (내장 또는 Permutation 기반)
+- SHAP 설명 (선택적)
+
+분할 정보는 Upload/Overview 단계에서 설정된 값을 사용하며,
+타깃 컬럼은 특징에서 제외되고 결측 타깃은 자동 제거됩니다.
 """
 import numpy as np
 import pandas as pd
@@ -44,11 +50,11 @@ except Exception:
 try:
     from modules import model_search as ms
 except Exception:
-    import modules.model_search as ms  # type: ignore
+    import modules.model_search as ms
 try:
     from modules import preprocessing as prep
 except Exception:
-    prep = None  # type: ignore
+    prep = None
 
 st.set_page_config(layout="wide")
 st.title("8 - Model Validation")
@@ -94,8 +100,7 @@ def prepare_features(
     target_col: str,
     feature_names_hint: Optional[list] = None,
     preprocessor=None,
-    forced_task: Optional[str] = None,
-) -> Tuple[pd.DataFrame, np.ndarray, str, list]:
+    forced_task: Optional[str] = None,) -> Tuple[pd.DataFrame, np.ndarray, str, list]:
     """Return X_df, y, task, feature_names; applies preprocessor if provided."""
     df_clean = df.dropna(subset=[target_col]).copy()
     if df_clean.empty:
@@ -176,8 +181,7 @@ def get_or_create_split_indices(
     test_size: float = 0.2,
     random_state: int = 42,
     stratify_flag: bool = False,
-    force_new: bool = False,
-) -> Tuple[list, list]:
+    force_new: bool = False,) -> Tuple[list, list]:
     """Persist split indices in session to ensure consistent train/test separation."""
     saved: Optional[Dict[str, Any]] = st.session_state.get(session_key)
     if (
@@ -240,7 +244,6 @@ def _build_hpo_model(model_name: str, params: dict, task: str, random_state: int
         params.setdefault("max_iter", 500)
         params.setdefault("random_state", random_state)
         return LogisticRegression(**params)
-    # fallback to tree models by task
     if task == "classification":
         return RandomForestClassifier(random_state=random_state, **params)
     return RandomForestRegressor(random_state=random_state, **params)
@@ -317,7 +320,6 @@ split_meta_saved = st.session_state.get("split_meta") or split_meta_default
 train_idx_saved = st.session_state.get("train_idx")
 test_idx_saved = st.session_state.get("test_idx")
 if not (isinstance(train_idx_saved, list) and isinstance(test_idx_saved, list) and len(train_idx_saved) > 0 and len(test_idx_saved) > 0):
-    # fallback: create once based on saved meta
     train_idx_saved, test_idx_saved = get_or_create_split_indices(
         df_eval,
         target_col,
@@ -528,7 +530,7 @@ else:
     except Exception as e:
         st.error(f"회귀 지표 계산 실패: {e}")
 
-# Save concise validation summary for report page
+# Save validation summary for report page
 st.session_state["validation_result"] = val_result
 
 # ------------ importance ------------
@@ -560,7 +562,7 @@ except Exception as e:
 
 # ------------ SHAP ------------
 if _HAS_EXPLAIN and explain_mod is not None:
-    st.header("SHAP 설명 (옵션)")
+    st.header("SHAP 설명")
     st.caption("무겁게 동작할 수 있으니 필요할 때만 실행하세요.")
     if st.button("SHAP 요약/워터폴 생성"):
         try:
@@ -585,3 +587,6 @@ else:
     st.info("SHAP 모듈을 사용할 수 없습니다. 필요 시 requirements.txt의 shap을 설치하고 modules/explain을 확인하세요.")
 
 st.success("Validation 완료.")
+
+st.markdown("---")
+st.info("다음 단계: report 페이지에서 전체 워크플로우 요약과 결과 보고서를 다운로드할 수 있습니다.")

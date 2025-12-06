@@ -1,12 +1,10 @@
-﻿# -*- coding: utf-8 -*-
-# pages/05_feature_engineering.py
-"""
+﻿"""
 5단계 - 특징 공학
 
 안내:
 - 타깃 컬럼은 자동 생성 입력에서 제외(누수 방지).
 - 생성 입력은 항상 전처리본(df_preprocessed) 선택합니다.
-- 생성 결과는 df_features에 저장하며, 필요 시 생략/확정 버튼으로 이전 단계 데이터를 그대로 사용할 수 있습니다.
+- 생성 결과는 df_features에 저장하며, 필요 시 생략/확정 버튼으로 이전 단계 데이터를 그대로 사용할 수 있습니다. (그냥 페이지 스킵도 가능)
 """
 import streamlit as st
 from typing import List
@@ -29,16 +27,15 @@ for key in [
 ]:
     st.session_state.setdefault(key, None)
 
-# Imports (fallbacks)
 try:
     from modules import feature_engineering as fe_mod
 except Exception:
-    import modules.feature_engineering as fe_mod  # type: ignore
+    import modules.feature_engineering as fe_mod
 
 try:
     from modules import io_utils
 except Exception:
-    import modules.io_utils as io_utils  # type: ignore
+    import modules.io_utils as io_utils
 
 def _apply_meta_to_full(df_full: pd.DataFrame, meta: dict) -> pd.DataFrame:
     """Apply generated feature rules (from train fit) to full dataset."""
@@ -50,7 +47,7 @@ def _apply_meta_to_full(df_full: pd.DataFrame, meta: dict) -> pd.DataFrame:
         try:
             if method == "ratio" and "__div__" in f:
                 a, b = f.split("__div__")
-                df_out[f] = fe_mod._safe_divide(df_out[a], df_out[b])  # type: ignore
+                df_out[f] = fe_mod._safe_divide(df_out[a], df_out[b])
             elif method == "diff" and "__minus__" in f:
                 a, b = f.split("__minus__")
                 df_out[f] = pd.to_numeric(df_out[a], errors="coerce").fillna(0) - pd.to_numeric(df_out[b], errors="coerce").fillna(0)
@@ -59,7 +56,7 @@ def _apply_meta_to_full(df_full: pd.DataFrame, meta: dict) -> pd.DataFrame:
                 df_out[f] = pd.to_numeric(df_out[a], errors="coerce").fillna(0) + pd.to_numeric(df_out[b], errors="coerce").fillna(0)
             elif method == "log1p" and f.endswith("__log1p"):
                 base = f[: -len("__log1p")]
-                df_out[f] = fe_mod._safe_log1p(df_out[base])  # type: ignore
+                df_out[f] = fe_mod._safe_log1p(df_out[base])
             elif method == "datetime_extract" and "__" in f:
                 base, attr = f.split("__", 1)
                 s = pd.to_datetime(df_out[base], errors="coerce")
@@ -69,7 +66,7 @@ def _apply_meta_to_full(df_full: pd.DataFrame, meta: dict) -> pd.DataFrame:
                     df_out[f] = s.dt.hour.fillna(-1).astype(int)
                 else:
                     df_out[f] = getattr(s.dt, attr).fillna(-1).astype(int)
-            # if method is unknown, skip silently
+            # if method is unknown, skip.
         except Exception:
             continue
     return df_out
@@ -100,7 +97,7 @@ st.write(
 if target_col and target_col in source_df.columns:
     st.caption(f"타깃 컬럼은 생성 대상에서 제외합니다: `{target_col}`")
 
-# 주요 설정 (본문)
+# 본문 세팅
 st.markdown("### 자동 생성 설정")
 st.caption("기본 규칙(비율/차이/로그/날짜 추출)으로 최대 10개를 생성합니다. 먼저 실행해보고 결과를 골라서 적용하세요.")
 col_cfg1, col_cfg2, col_cfg3 = st.columns(3)
@@ -314,4 +311,5 @@ if st.button("특징공학 생략/현재 데이터로 확정"):
         st.session_state["df_features_test"] = source_df.iloc[test_idx].copy()
     st.success("현재 단계 데이터를 그대로 다음 단계에 사용합니다.")
 
-st.write("다음 단계: 모델 선택(베이스라인/HPO)으로 이동하세요.")
+st.markdown("---")
+st.info("다음 단계: Model Selection 페이지로 이동하여 베이스라인 모델을 비교해보세요.")
