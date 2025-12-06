@@ -39,6 +39,14 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, Grad
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.base import clone
+try:
+    from imblearn.pipeline import Pipeline as ImbPipeline
+    from imblearn.over_sampling import SMOTE
+    from imblearn.under_sampling import RandomUnderSampler
+    _HAS_IMB = True
+except Exception:
+    ImbPipeline, SMOTE, RandomUnderSampler = None, None, None
+    _HAS_IMB = False
 
 try:
     from modules import explain as explain_mod
@@ -270,6 +278,18 @@ def train_hpo_model(
         split_indices=split_indices,
     )
     model = _build_hpo_model(model_name or "", params, task, random_state=random_state)
+
+    # HPO 단계에서 사용한 샘플링 옵션 재적용(분류 전용)
+    sampler_method = st.session_state.get("hpo_sampler_method")
+    sampler_obj = None
+    if task == "classification" and sampler_method and _HAS_IMB:
+        if sampler_method.startswith("SMOTE"):
+            sampler_obj = SMOTE(random_state=int(random_state))
+        elif sampler_method.startswith("언더샘플링"):
+            sampler_obj = RandomUnderSampler(random_state=int(random_state))
+    if sampler_obj is not None and _HAS_IMB:
+        model = ImbPipeline([("sampler", sampler_obj), ("model", model)])
+
     model.fit(X_train, y_train)
     return model, X_test, y_test, task, feature_names
 
@@ -360,21 +380,31 @@ if best_params_model is None:
     best_params_model = st.session_state.get("hpo_model_name")
 
 options = []
-if trained_model is not None:
-    options.append("훈련된 모델 (trained_model)")
+baseline_label = None
+hpo_label = None
+
 if best_baseline_name and baselines.get(best_baseline_name):
-    options.append(f"베이스라인 추천 모델 ({best_baseline_name})")
+    baseline_label = f"세션 추천 모델 (베이스라인: {best_baseline_name})"
 elif baselines:
-    options.append("베이스라인 첫 모델")
+    first_name = list(baselines.keys())[0]
+    baseline_label = f"세션 추천 모델 (베이스라인: {first_name})"
+
 if best_params:
-    options.append("HPO best_params로 새로 학습")
+    hpo_label = "HPO 튜닝 모델 (best_params)"
+elif trained_model is not None and st.session_state.get("hpo_result"):
+    hpo_label = "HPO 튜닝 모델 (세션 저장본)"
+
+if baseline_label:
+    options.append(baseline_label)
+if hpo_label:
+    options.append(hpo_label)
 
 if not options:
     st.error("평가할 모델이 없습니다. Model Selection/HPO 단계 수행 후 다시 시도하세요.")
     st.stop()
 
 st.subheader("검증용 모델 선택")
-st.caption("세션에 저장된 모델 우선 → 베이스라인 → HPO 파라미터 재학습 순으로 선택할 수 있습니다.")
+st.caption("두 가지 옵션만 제공합니다: 세션 추천 베이스라인 모델, HPO 튜닝 모델.")
 model_choice = st.selectbox("평가할 모델 선택", options=options, index=0)
 
 # ------------ prepare model and data ------------
@@ -385,25 +415,7 @@ task = None
 feature_names = None
 
 try:
-    if model_choice.startswith("훈련된 모델") and trained_model is not None:
-        # If X_test/y_test exist in session, use them; else split from current df_eval (apply preprocessor on raw if available)
-        if "X_test" in st.session_state and "y_test" in st.session_state:
-            model = trained_model
-            X_test = st.session_state["X_test"]
-            y_test = st.session_state["y_test"]
-            feature_names = st.session_state.get("feature_names")
-            task = st.session_state.get("problem_type")
-        else:
-            X_train, X_test, y_train, y_test, task, feature_names = prepare_split(
-                df_eval,
-                target_col,
-                feature_names_hint=None,
-                preprocessor=preproc_obj,
-                forced_task=problem_type_override,
-                split_indices=split_indices,
-            )
-            model = trained_model
-    elif model_choice.startswith("베이스라인") and baselines:
+    if baseline_label and model_choice == baseline_label and baselines:
         entry = baselines.get(best_baseline_name) if best_baseline_name and baselines.get(best_baseline_name) else list(baselines.values())[0]
         base_model = entry.get("model")
         task = entry.get("task")
@@ -422,18 +434,32 @@ try:
             model = base_model
         if model is not None:
             model.fit(X_train, y_train)
-    elif model_choice.startswith("HPO") and best_params:
-        # retrain RF with best_params; use preprocessor on raw if available
-        model, X_test, y_test, task, feature_names = train_hpo_model(
-            df_eval,
-            target_col,
-            best_params,
-            best_params_model,
-            random_state=0,
-            preprocessor=preproc_obj,
-            forced_task=problem_type_override,
-            split_indices=split_indices,
-        )
+    elif hpo_label and model_choice == hpo_label:
+        # 우선 세션에 저장된 trained_model(HPO 결과)을 사용하고, 부족하면 best_params로 재학습
+        if trained_model is not None and st.session_state.get("hpo_result"):
+            X_train, X_test, y_train, y_test, task, feature_names = prepare_split(
+                df_eval,
+                target_col,
+                feature_names_hint=st.session_state.get("feature_names"),
+                preprocessor=preproc_obj,
+                forced_task=problem_type_override,
+                split_indices=split_indices,
+            )
+            model = trained_model
+        elif best_params:
+            model, X_test, y_test, task, feature_names = train_hpo_model(
+                df_eval,
+                target_col,
+                best_params,
+                best_params_model,
+                random_state=0,
+                preprocessor=preproc_obj,
+                forced_task=problem_type_override,
+                split_indices=split_indices,
+            )
+        else:
+            st.error("HPO 모델이 없습니다. HPO를 먼저 실행하세요.")
+            st.stop()
     else:
         st.error("선택한 모델을 준비할 수 없습니다.")
         st.stop()

@@ -97,29 +97,40 @@ def _apply_fe_meta(df_full: pd.DataFrame, meta: dict) -> pd.DataFrame:
 
 
 def _resolve_model() -> Optional[dict]:
-    """Return selected model entry and name."""
+    """Return selected model entry and name. 옵션을 두 가지로 단순화: 세션 추천 베이스라인 vs HPO 튜닝."""
     trained_model = st.session_state.get("trained_model")
     baselines = st.session_state.get("baseline_models") or {}
     best_baseline_name = st.session_state.get("best_model_name")
+    hpo_res = st.session_state.get("hpo_result")
 
     options = []
-    if trained_model is not None:
-        options.append("훈련된 모델 (trained_model)")
+    baseline_label = None
+    hpo_label = None
+
     if best_baseline_name and baselines.get(best_baseline_name):
-        options.append(f"베이스라인 추천 모델 ({best_baseline_name})")
+        baseline_label = f"세션 추천 모델 (베이스라인: {best_baseline_name})"
     elif baselines:
-        options.append("베이스라인 첫 모델")
+        first_name = list(baselines.keys())[0]
+        baseline_label = f"세션 추천 모델 (베이스라인: {first_name})"
+
+    if trained_model is not None and hpo_res:
+        hpo_label = "HPO 튜닝 모델 (세션 저장본)"
+
+    if baseline_label:
+        options.append(baseline_label)
+    if hpo_label:
+        options.append(hpo_label)
 
     if not options:
         st.error("사용 가능한 모델이 없습니다. 이전 단계에서 모델을 학습하세요.")
         return None
 
     choice = st.selectbox("사용할 모델 선택", options=options, index=0)
-    if choice.startswith("훈련된 모델") and trained_model is not None:
-        return {"name": "trained_model", "model": trained_model, "feature_names": st.session_state.get("feature_names")}
-    if choice.startswith("베이스라인") and baselines:
+    if baseline_label and choice == baseline_label:
         entry = baselines.get(best_baseline_name) if best_baseline_name and baselines.get(best_baseline_name) else list(baselines.values())[0]
         return {"name": best_baseline_name or "baseline", "model": entry.get("model"), "feature_names": entry.get("feature_names")}
+    if hpo_label and choice == hpo_label and trained_model is not None:
+        return {"name": "hpo_trained", "model": trained_model, "feature_names": st.session_state.get("feature_names")}
     return None
 
 

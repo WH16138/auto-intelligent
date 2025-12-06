@@ -201,6 +201,8 @@ with col3:
     random_state = st.number_input("random_state", min_value=0, value=0, step=1, help="재현성 설정")
 
 # Sampling options (classification 전용)
+sampling_method = "없음 (기본)"
+sampler_for_fit = None
 with st.expander("불균형 대응/고급 옵션", expanded=False):
     sampling_options = ["없음 (기본)"]
     if _HAS_IMB:
@@ -216,6 +218,7 @@ with st.expander("불균형 대응/고급 옵션", expanded=False):
         if sampling_method.startswith("언더샘플링"):
             return RandomUnderSampler(random_state=int(random_state))
         return None
+    sampler_for_fit = _make_sampler()
 
     # Early stopping & search controls (Optuna 전용)
     if search_method == "Optuna":
@@ -491,6 +494,8 @@ if st.button("HPO 실행"):
         st.session_state["hpo_result"] = hpo_result
         st.session_state["hpo_model_name"] = model_option
         st.session_state["target_col"] = target_col
+        # sampler 메서드 저장 (검증/재학습 시 일관성 유지)
+        st.session_state["hpo_sampler_method"] = sampling_method if sampling_method else None
         progress_bar.progress(1.0, text="HPO 완료")
         st.success("HPO가 완료되었습니다.")
 
@@ -498,6 +503,7 @@ if st.button("HPO 실행"):
         best_params = hpo_result.get("best_params") if isinstance(hpo_result, dict) else None
         if best_params:
             try:
+                sampler_for_final = sampler_for_fit if task == "classification" else None
                 if model_option == "RandomForestClassifier":
                     model = RandomForestClassifier(random_state=int(random_state), **best_params)
                 elif model_option == "RandomForestRegressor":
@@ -519,6 +525,8 @@ if st.button("HPO 실행"):
                 else:
                     model = None
                 if model is not None:
+                    if sampler_for_final is not None and _HAS_IMB:
+                        model = ImbPipeline([("sampler", sampler_for_final), ("model", model)])
                     model.fit(X, y)
                     st.session_state["trained_model"] = model
                     st.session_state["feature_names"] = feature_names

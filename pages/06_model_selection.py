@@ -171,7 +171,10 @@ if st.button("빠른 베이스라인 실행 (Quick Baselines)"):
             if results_df.replace({np.nan: None}).drop(columns=["model", "task"], errors="ignore").isna().all().all():
                 st.warning("모든 스코어가 NaN입니다. 데이터/타깃/특징을 확인하세요.")
             else:
-                st.success("베이스라인 실행 완료.")
+                msg = "베이스라인 실행 완료."
+                if best_name:
+                    msg += f" 추천 모델을 세션에 자동 설정했습니다: {best_name}"
+                st.success(msg)
     except Exception as e:
         st.error(f"베이스라인 실행 실패: {e}")
 
@@ -218,11 +221,10 @@ else:
             except Exception:
                 st.write("모델 파라미터를 불러올 수 없습니다.")
 
-        if st.button("세션에 이 모델 저장 (trained_model)"):
-            st.session_state["trained_model"] = mdl
-            st.session_state["feature_names"] = feat_names
-            st.session_state["problem_type"] = selected_entry.get("task")
-            st.success("선택 모델을 세션에 저장했습니다. Validation/Inference에서 사용 가능합니다.")
+        if st.button("세션 추천 모델로 지정 (baseline)"):
+            # Validation/Inference에서 '세션 추천 모델' 옵션으로 선택되도록 best_model_name만 지정
+            st.session_state["best_model_name"] = selected_model_name
+            st.success(f"세션 추천 모델로 설정했습니다: {selected_model_name} (Validation/Inference에서 사용)")
 
         if st.button("선택 모델 아티팩트 저장 (artifacts/)"):
             try:
@@ -270,44 +272,6 @@ else:
                     st.info("예측 데모에 사용할 수치형 컬럼이 없습니다.")
             except Exception as e:
                 st.warning(f"예측 데모 실패: {e}")
-
-# Accept best model quick action
-st.markdown("---")
-st.subheader("최적 모델 저장")
-best_name = st.session_state.get("best_model_name")
-if best_name:
-    st.write(f"현재 추천 최적 모델: `{best_name}`")
-else:
-    st.info("베이스라인 결과에서 최적 모델을 아직 산출하지 못했습니다.")
-
-if st.button("추천 최적 모델을 최종 스냅샷으로 저장"):
-    if not best_name:
-        st.error("추천 최적 모델이 없습니다.")
-    else:
-        best_entry = (st.session_state.get("baseline_models") or {}).get(best_name)
-        if best_entry is None or best_entry.get("model") is None:
-            st.error("추천 모델 객체를 찾을 수 없습니다.")
-        else:
-            try:
-                mdl = best_entry.get("model")
-                preproc = st.session_state.get("preprocessing_pipeline")
-                try:
-                    params_obj = mdl.get_params()
-                except Exception:
-                    params_obj = None
-                paths = io_utils.snapshot_artifacts(
-                    model_obj=mdl,
-                    preprocessor_obj=preproc,
-                    params=params_obj,
-                    base_dir="artifacts",
-                    prefix="final",
-                )
-                st.session_state["trained_model"] = mdl
-                st.session_state["feature_names"] = best_entry.get("feature_names")
-                st.session_state["problem_type"] = best_entry.get("task")
-                st.success(f"최종 모델 스냅샷 저장 완료: {paths}")
-            except Exception as e:
-                st.error(f"최종 모델 저장 실패: {e}")
 
 st.markdown("---")
 st.info("다음 단계: Hyperparameter Tuning 페이지로 이동하여, 모델의 성능을 더욱 향상시켜보세요.")
