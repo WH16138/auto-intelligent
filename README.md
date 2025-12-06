@@ -39,7 +39,8 @@ python -m venv .venv
 pip install -r requirements.txt
 streamlit run app.py
 ```
-브라우저가 열리면 좌측 사이드바의 01~10 단계를 순서대로 진행합니다.
+브라우저가 열리면 좌측 사이드바의 01~10 단계를 순서대로 진행합니다.  
+배포 버전(바로 실행): https://aai-lab.streamlit.app/
 
 ### 샘플 데이터
 당장 사용 가능한 데이터가 없어도 괜찮습니다.  
