@@ -43,10 +43,7 @@ streamlit run app.py
 배포 버전(바로 실행): https://aai-lab.streamlit.app/
 
 ### 샘플 데이터
-당장 사용 가능한 데이터가 없어도 괜찮습니다.  
-01 Upload 페이지에서 “샘플 데이터 로드” 버튼을 누르면 바로 사용 가능한 demo 데이터를 불러올 수 있습니다.  
-또는 Dacon/Kaggle 등에서 train.csv를 내려받아 사용할 수도 있습니다.
----
+당장 사용 가능한 데이터가 없어도 괜찮습니다. 01 Upload 페이지에서 "샘플 데이터 로드" 버튼을 누르면 demo 데이터를 불러올 수 있습니다. 또는 Dacon/Kaggle 등에서 train.csv를 내려받아 사용할 수도 있습니다.
 
 ## 3. 아키텍처 & 디렉터리
 ```
@@ -85,8 +82,6 @@ project_overview.md    # 추가 아키텍처 설명
 - **08 Validation**: 선택 모델로 검증, 주요 지표/플롯, 중요도, SHAP(옵션), 결과 요약 저장
 - **09 Report**: HTML 보고서 생성(데이터/특징/베이스라인/HPO/검증 섹션 선택)
 - **10 Inference**: 학습 모델 선택 → 예측 옵션 → CSV 업로드 → 전체/제출용 파일 다운로드, 모델 피클 다운로드
-
-> 스크린샷은 `reports/` 또는 `screenshots/` 경로에 추가해 README에서 링크(예: `![upload](reports/upload.png)`)로 연결하세요.
 
 ---
 
