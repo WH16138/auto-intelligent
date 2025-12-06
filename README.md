@@ -89,14 +89,96 @@ project_overview.md    # 추가 아키텍처 설명
 
 ---
 
-## 6. 일반적 사용 흐름 예시
-1) **샘플 데이터 로드** → 자동 split/타깃 감지 확인  
-2) **EDA/Preprocessing/Feature Eng.** 기본값으로 실행 후 필요시 수정  
-3) **Model Selection** 베이스라인 실행 → 상위 모델 확인  
-4) **HPO** Optuna로 추가 튜닝, 불균형 시 샘플링 적용  
-5) **Validation** 지표/혼동행렬/ROC/Residual 확인, SHAP(Optional)  
-6) **Report** HTML 생성 → 다운로드
-7) **Inference** 새 CSV 예측 → 제출용 파일 생성(Kaggle/Dacon)
+## 6. 사용 흐름 예시 (10단계 스크린샷 템플릿)
+red - orange - yellow - green - blue - navy - purple 순서로 작업을 진행하세요.
+
+0) 메인화면 & 서비스 개요
+![00 App](screenshots/00_app.png)
+- r : 메인 페이지입니다. 프로젝트 개요와 소개를 포함합니다.
+- o : 사이드바에서 각 단계로 이동할 수 있습니다.
+
+1) 데이터 업로드
+![01 Upload](screenshots/01_upload.png)
+- r : 사용할 csv 형식의 데이터를 직접 업로드 하거나, 샘플 데이터를 불러오세요.
+- o : 예측목표(target)를 지정하세요.
+- y : 데이터 지문을 생성하세요.
+
+2) 데이터 개요 / 분할 전략 설정
+![02 Overview](screenshots/02_overview.png)
+- r : 데이터 형태에 따라 분할방식이 자동 추천됩니다. 필요시 직접 수정하여 데이터 세트 분할을 적용하세요.
+- o : 문제 유형은 데이터 형태에 따라 자동 감지됩니다. 필요시 직접 설정하세요.
+- y : 불필요하거나 의미 없는 컬럼을 제거하거나, 타입을 조정 할 수 있습니다.
+
+3) EDA
+![03 EDA 1](screenshots/03_eda1.png)
+- r : 시각화할 컬럼을 선택하세요.
+- o : 선택한 컬럼에 대한 수치적 통계를 확인하세요.
+- y : 선택할 컬럼을 시각화한 분포그래프와 박스플롯을 확인하세요.
+![03 EDA 2](screenshots/03_eda2.png)
+- g : 상관관계 히트맵을 통해 컬럼간 관계를 확인하세요.
+- b : 각 컬럼별 결측치 분포를 빠르게 확인하세요.
+
+4) 데이터 전처리
+![04 Preprocessing 1](screenshots/04_preprocessing1.png)
+- r : 데이터 전처리를 위한 결측치 처리 전략, 스케일링 적용 여부, 범주형 컬럼 처리 전략을 설정하세요.
+![04 Preprocessing 2](screenshots/04_preprocessing2.png)
+- o : 전처리 후 데이터 미리보기를 확인할 수 있습니다.
+- y : 문제가 없다면, tarin 데이터 기반으로 fit 된 전처리 파이프라인을 전체 데이터에 적용하세요.
+
+5) 특징공학
+![05 Feature Engineering 1](screenshots/05_feature%20engineering1.png)
+- r : 새로운 속성을 생성하기 위해 생성할 속성의 최대 개수와 적용할 변환 방식을 선택합니다.
+- o : 버튼을 클릭하여 새로운 속성을 생성합니다.
+![05 Feature Engineering 2](screenshots/05_feature%20engineering2.png)
+- y : 기존 속성과 새로운 속성을 모두 가져옵니다.
+- g : 속성 중요도를 기반으로 최종 선택할 속성의 최대 개수를 정합니다.
+- b : 중요도 기반 속성 추천을 시행합니다.
+- n : 추천된 속성을 최종적으로 채택합니다.
+
+6) 베이스라인 모델 비교
+![06 Model Selection 1](screenshots/06_medel%20selection1.png)
+- r : 교차검증과 재현성을 위한 값을 설정합니다.
+- o : 기본 모델의 비교를 수행하여, 가장 우수한 모델을 자동 선택합니다.
+![06 Model Selection 2](screenshots/06_medel%20selection2.png)
+- y : 모델별 성능 지표를 확인합니다.
+- g : 필요시 특정 모델을 베이스 모델로 지정합니다.
+- b : 지정한 모델을 기본 베이스라인 모델로 지정합니다.
+
+7) 하이퍼 피라미터 튜닝
+![07 HPO](screenshots/07_hpo.png)
+- r : 하이퍼피라미터 튜닝 방식을 선택합니다.
+- o : 튜닝 대상 모델을 선택합니다.
+- y : 시간 예산과 교차검증, 병렬처리, 재현성 옵션을 설정합니다.
+- g : 샘플링 및 탐색 조기 중단 등 고급 옵션을 설정합니다.
+- b : 모델의 하이퍼피라미터 튜닝을 시작합니다. 튜닝 성공시 자동으로 가장 좋은 피라미터로 튜닝된 모델이 저장됩니다.
+
+8) 모델 검증
+![08 Validation 1](screenshots/08_validation1.png)
+- r : 검증할 모델을 선택합니다.
+- o : 모델에 대한 주요 평가 점수를 확인합니다. 
+- y : confusion matrix 를 확인합니다.
+![08 Validation 2](screenshots/08_validation2.png)
+- g : SHAP 요약 이미지를 생성합니다. 오래걸릴 수 있습니다. 각 속성의 기여와 중요도를 확인할 수 있습니다.
+
+9) 데이터 및 모델 보고서 생성
+![09 Report](screenshots/09_report.png)
+- r : 보고서 파일 이름을 설정합니다.
+- o : 보고서에 포함될 내용을 선택합니다.
+- y : 보고서를 생성합니다. 시간이 걸릴 수 있습니다.
+- g : 생성된 보고서를 다운로드합니다.
+
+10) 모델 활용 및 pkl 추출
+![10 Inference1](screenshots/10_inference1.png)
+- r : 사용할 모델을 선택합니다.
+- o : 예측 결과를 기록할 컬럼 이름을 지정합니다.
+- y : 최종 예측 결과 파일의 이름을 지정합니다.
+- g : 단순화된 최종 예측 결과 파일에 예측결과와 함께 포함할 식별용 ID 칼럼의 이름을 지정합니다. 
+![10 Inference2](screenshots/10_inference2.png)
+- 주의 - 이미지에서 사용된 데이터는 예측 예시를 보여주기 위해 Dacon의 영화 관객수 예측 프로젝트의 test.csv 샘플 데이터를 사용하였으며, 지금까지의 워크 플로우와 맞지 않습니다.
+- b : 예측을 위해 업로드된 데이터의 전체 컬럼 + 예측 결과 컬럼을 결합한 결과 csv를 생성하여 내보냅니다.
+- n : ID + 예측 결과 컬럼만 결합한 csv 파일을 내보냅니다.
+![10 Inference3](screenshots/10_inference3.png)
+- p : 모델을 바로 사용하는 대신, 선택한 모델을 pkl 형태로 내보냅니다.
 
 ---
 
