@@ -89,7 +89,7 @@ project_overview.md    # 추가 아키텍처 설명
 ---
 
 ## 6. 사용 흐름 예시 (10단계 스크린샷 템플릿)
-_red → orange → yellow → green → blue → navy → purple_ 순서의 컬러 박스를 참고해 따라가면 됩니다.
+_red → orange → yellow → green → blue → navy → purple_ 순서의 컬러 박스의 진행을 따라가는것을 추천합니다.
 
 ### 0) 메인화면 & 서비스 개요  
 ![00 App](screenshots/00_app.png)  
