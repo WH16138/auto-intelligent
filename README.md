@@ -35,6 +35,7 @@
 - 필수 패키지: `streamlit`, `pandas`, `scikit-learn`, `plotly`, `optuna`, `imbalanced-learn` 등 (`requirements.txt` 참조)
 
 ### 설치 및 실행
+- venv 가상 환경은 선택사항입니다.
 ```bash
 python -m venv .venv
 .venv\Scripts\activate  # macOS/Linux: source .venv/bin/activate
